@@ -24,12 +24,12 @@ class MemoryRetriever:
         embedding = await self.embedding_client.embed(query)
 
         # MOCKED UNTIL VECTOR STORE IS CREATED
-        vector_results = await self.vector_store.search(
-            embedding=embedding,
-            top_k=top_k,
-            user_id=user_id
-        )
-        # vector_results = []
+        # vector_results = await self.vector_store.search(
+        #     embedding=embedding,
+        #     top_k=top_k,
+        #     user_id=user_id
+        # )
+        vector_results = []
 
         proposals = await self._retrieve_proposals(user_id, vector_results)
 
@@ -71,16 +71,16 @@ ASSISTANT:
         embedding = await self.embedding_client.embed(combined_text)
 
         # MOCKED UNTIL VECTOR STORE IS CREATED
-        await self.vector_store.store(
-            embedding=embedding,
-            text=combined_text,
-            metadata={
-                "user_id": user_id,
-                "conversation_id": conversation_id,
-                "strategy": strategy["agent"],
-                "timestamp": self._timestamp()
-            }
-        )
+        # await self.vector_store.store(
+        #     embedding=embedding,
+        #     text=combined_text,
+        #     metadata={
+        #         "user_id": user_id,
+        #         "conversation_id": conversation_id,
+        #         "strategy": strategy["agent"],
+        #         "timestamp": self._timestamp()
+        #     }
+        # )
         pass
 
     async def retrieve_recent_interactions(
@@ -88,7 +88,8 @@ ASSISTANT:
         user_id: str,
         limit: int = 50
     ):
-        return await self.vector_store.get_recent(user_id, limit)
+        # return await self.vector_store.get_recent(user_id, limit)
+        return []
 
     async def get_active_conversations(self, user_id: str):
         # return Conversation.get_active(user_id)
