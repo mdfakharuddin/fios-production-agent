@@ -1,4 +1,4 @@
-const FIOS_API_URL = "https://api.themenuagency.com/api/chat";
+const FIOS_API_URL = "https://c4800kswgwggs0sg8o8kkogs.103.127.1.91.sslip.io/api/chat";
 
 async function queryFIOS(message, conversationId=null, metadata={}) {
 
@@ -31,7 +31,7 @@ async function sendJobsToFIOS(jobs) {
     for (const job of jobs) {
         try {
             const response = await fetch(
-                "https://api.themenuagency.com/api/job/analyze",
+                "https://c4800kswgwggs0sg8o8kkogs.103.127.1.91.sslip.io/api/job/analyze",
                 {
                     method: "POST",
                     headers: {

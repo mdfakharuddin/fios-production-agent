@@ -1,5 +1,5 @@
-const FIOS_API_CHAT = "https://api.themenuagency.com/api/chat";
-const FIOS_API_JOB = "https://api.themenuagency.com/api/job/analyze";
+const FIOS_API_CHAT = "https://c4800kswgwggs0sg8o8kkogs.103.127.1.91.sslip.io/api/chat";
+const FIOS_API_JOB = "https://c4800kswgwggs0sg8o8kkogs.103.127.1.91.sslip.io/api/job/analyze";
 
 let fiosPanel = null;
 

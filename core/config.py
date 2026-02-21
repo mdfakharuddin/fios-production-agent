@@ -14,8 +14,18 @@ class Settings(BaseSettings):
     POSTGRES_DB: str = "fios_db"
     POSTGRES_PORT: str = "5432"
     
+    DATABASE_URL: Optional[str] = None
+    
     @property
     def async_database_url(self) -> str:
+        if self.DATABASE_URL:
+             url = self.DATABASE_URL
+             if url.startswith("postgres://"):
+                 url = url.replace("postgres://", "postgresql+asyncpg://", 1)
+             elif url.startswith("postgresql://"):
+                 url = url.replace("postgresql://", "postgresql+asyncpg://", 1)
+             return url
+        
         import os
         db_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "fios_local_db.sqlite3")
         return f"sqlite+aiosqlite:///{os.path.abspath(db_path)}"
