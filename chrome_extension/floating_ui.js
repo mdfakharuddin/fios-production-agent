@@ -279,13 +279,23 @@ function updateStatus(text, state = "info") {
 
 async function generateReply() {
     updateStatus("Analyzing thread...", "processing");
-    let messages = document.querySelectorAll('[data-test="message-text"], .msg-body, .message-content, [data-v-message-text], .text-body-sm.break-words');
-    if (!messages.length) {
-        addChatMessage("No conversation messages detected.", "agent");
+    let messages = Array.from(document.querySelectorAll('[data-test="message-text"], .msg-body, .message-content, [data-v-message-text], .text-body-sm.break-words, .up-d-message, [data-test="Message"]'));
+    
+    let lastMessage = "";
+    if (messages.length > 0) {
+        lastMessage = messages[messages.length - 1].innerText;
+    } else {
+        const messageArea = document.querySelector('main, [role="main"], #main, .chat-container, .messages-list, .p-messages');
+        if (messageArea && messageArea.innerText) {
+            lastMessage = messageArea.innerText.slice(-500); 
+        }
+    }
+
+    if (!lastMessage || lastMessage.trim().length === 0) {
+        addChatMessage("No conversation messages detected. (Upwork's layout might be hiding it from the scraper). You can type your request manually.", "agent");
         updateStatus("Online", "error");
         return;
     }
-    const lastMessage = messages[messages.length - 1].innerText;
     const response = await callFIOSChat(`Generate a winning reply to: ${lastMessage}`);
     injectReply(response);
     addChatMessage("Generated and injected smart reply.", "agent");
