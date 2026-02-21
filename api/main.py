@@ -39,12 +39,12 @@ app.add_middleware(
 # Register routes
 app.include_router(
     chat_router,
-    prefix="/fios/api"
+    prefix="/api"
 )
 
 app.include_router(
     job_router,
-    prefix="/fios/api/job"
+    prefix="/api/job"
 )
 
 @app.get("/health")
