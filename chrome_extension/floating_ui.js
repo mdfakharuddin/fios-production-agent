@@ -279,7 +279,7 @@ function updateStatus(text, state = "info") {
 
 async function generateReply() {
     updateStatus("Analyzing thread...", "processing");
-    const messages = document.querySelectorAll('[data-test="message-text"]');
+    let messages = document.querySelectorAll('[data-test="message-text"], .msg-body, .message-content, [data-v-message-text], .text-body-sm.break-words');
     if (!messages.length) {
         addChatMessage("No conversation messages detected.", "agent");
         updateStatus("Online", "error");
