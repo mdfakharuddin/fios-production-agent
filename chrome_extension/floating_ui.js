@@ -28,21 +28,22 @@ function createFIOSPanel() {
             position: fixed;
             right: 24px;
             bottom: 24px;
-            width: 340px;
-            background: rgba(15, 23, 42, 0.85);
+            width: 360px;
+            background: rgba(15, 23, 42, 0.9);
             backdrop-filter: blur(20px);
             -webkit-backdrop-filter: blur(20px);
             border: 1px solid rgba(255, 255, 255, 0.1);
             color: #f8fafc;
             font-family: 'Outfit', sans-serif;
             padding: 20px;
-            border-radius: 16px;
+            border-radius: 20px;
             z-index: 9999999;
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255,255,255,0.1);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
             animation: slideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1);
             display: flex;
             flex-direction: column;
             gap: 16px;
+            max-height: 80vh;
         }
         #fios-panel-header {
             display: flex;
@@ -56,8 +57,8 @@ function createFIOSPanel() {
             align-items: center;
             gap: 8px;
             font-weight: 700;
-            font-size: 17px;
-            letter-spacing: 0.5px;
+            font-size: 18px;
+            letter-spacing: -0.02em;
             background: linear-gradient(135deg, #38bdf8, #818cf8);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
@@ -70,7 +71,6 @@ function createFIOSPanel() {
             color: #94a3b8;
             font-weight: 600;
             text-transform: uppercase;
-            letter-spacing: 0.5px;
         }
         .fios-status-dot {
             width: 8px;
@@ -78,72 +78,116 @@ function createFIOSPanel() {
             background: #10b981;
             border-radius: 50%;
             animation: pulseGlow 2s infinite;
-            transition: background 0.3s ease;
         }
+        /* Chat UI Section */
+        #fios-chat-container {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            flex-grow: 1;
+            overflow: hidden;
+        }
+        #fios-chat-history {
+            flex-grow: 1;
+            overflow-y: auto;
+            max-height: 250px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            padding-right: 4px;
+        }
+        #fios-chat-history::-webkit-scrollbar {
+            width: 4px;
+        }
+        #fios-chat-history::-webkit-scrollbar-thumb {
+            background: rgba(255,255,255,0.1);
+            border-radius: 10px;
+        }
+        .fios-message {
+            padding: 10px 14px;
+            border-radius: 12px;
+            font-size: 13px;
+            line-height: 1.5;
+            max-width: 85%;
+        }
+        .fios-message-user {
+            align-self: flex-end;
+            background: rgba(59, 130, 246, 0.2);
+            color: #e2e8f0;
+            border: 1px solid rgba(59, 130, 246, 0.3);
+        }
+        .fios-message-agent {
+            align-self: flex-start;
+            background: rgba(255, 255, 255, 0.05);
+            color: #f1f5f9;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        #fios-chat-input-wrapper {
+            display: flex;
+            gap: 8px;
+            background: rgba(0, 0, 0, 0.2);
+            padding: 8px;
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        #fios-chat-input {
+            background: transparent;
+            border: none;
+            color: #fff;
+            font-family: inherit;
+            font-size: 13px;
+            flex-grow: 1;
+            outline: none;
+        }
+        #fios-chat-send {
+            background: #3b82f6;
+            border: none;
+            border-radius: 8px;
+            width: 28px;
+            height: 28px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            color: white;
+            transition: opacity 0.2s;
+        }
+        #fios-chat-send:hover { opacity: 0.8; }
+        
         .fios-btn {
             width: 100%;
-            padding: 12px;
+            padding: 10px;
             border-radius: 10px;
-            font-family: 'Outfit', sans-serif;
+            font-family: inherit;
             font-weight: 600;
-            font-size: 14px;
+            font-size: 13px;
             cursor: pointer;
             border: none;
-            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            transition: all 0.2s;
             display: flex;
             justify-content: center;
             align-items: center;
             gap: 8px;
         }
-        #fios-generate-reply {
-            background: rgba(255, 255, 255, 0.05);
-            color: #cbd5e1;
-            border: 1px solid rgba(255, 255, 255, 0.08);
-        }
-        #fios-generate-reply:hover {
-            background: rgba(255, 255, 255, 0.1);
-            color: #fff;
-            transform: translateY(-2px);
-        }
         #fios-generate-proposal {
             background: linear-gradient(135deg, #4f46e5 0%, #3b82f6 100%);
             color: white;
-            box-shadow: 0 4px 14px rgba(59, 130, 246, 0.3);
         }
-        #fios-generate-proposal:hover {
-            box-shadow: 0 6px 20px rgba(59, 130, 246, 0.5);
-            transform: translateY(-2px);
-            background: linear-gradient(135deg, #4338ca 0%, #2563eb 100%);
+        #fios-generate-reply {
+            background: rgba(255, 255, 255, 0.05);
+            color: #cbd5e1;
+            border: 1px solid rgba(255, 255, 255, 0.1);
         }
-        .fios-btn:active {
-            transform: translateY(1px) !important;
-        }
-        .fios-icon {
-            width: 16px;
-            height: 16px;
-        }
-        #fios-content-area {
-            font-size: 13px;
+        .fios-btn:hover { transform: translateY(-1px); }
+        .fios-btn:active { transform: translateY(0); }
+        
+        #fios-status-display {
+            font-size: 12px;
             color: #94a3b8;
-            line-height: 1.5;
-            background: rgba(0, 0, 0, 0.25);
-            padding: 14px;
-            border-radius: 10px;
-            border: 1px solid rgba(255,255,255,0.05);
-            min-height: 48px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
             text-align: center;
-            transition: all 0.3s ease;
-        }
-        .fios-success-text {
-            color: #34d399 !important;
-            font-weight: 600;
-        }
-        .fios-highlight-text {
-            color: #60a5fa !important;
-            font-weight: 600;
+            background: rgba(0,0,0,0.2);
+            padding: 8px;
+            border-radius: 8px;
         }
     `;
     document.head.appendChild(style);
@@ -153,213 +197,160 @@ function createFIOSPanel() {
 
     fiosPanel.innerHTML = `
         <div id="fios-panel-header">
-            <div class="fios-brand">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                    <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
-                    <polyline points="2 17 12 22 22 17"></polyline>
-                    <polyline points="2 12 12 17 22 12"></polyline>
-                </svg>
-                FIOS Agent
-            </div>
+            <div class="fios-brand">FIOS Intelligence</div>
             <div class="fios-status-indicator">
                 <div class="fios-status-dot" id="fios-status-dot"></div>
                 <span id="fios-status-text">Online</span>
             </div>
         </div>
 
-        <div id="fios-content-area">
-            Waiting for Upwork context...
+        <div id="fios-status-display">Waiting for project context...</div>
+
+        <div id="fios-chat-container">
+            <div id="fios-chat-history">
+                <div class="fios-message fios-message-agent">System ready. How can I help you dominate this job market?</div>
+            </div>
+            <div id="fios-chat-input-wrapper">
+                <input type="text" id="fios-chat-input" placeholder="Ask FIOS anything...">
+                <button id="fios-chat-send">
+                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"></path></svg>
+                </button>
+            </div>
         </div>
 
-        <div>
-            <button id="fios-generate-proposal" class="fios-btn">
-                <svg class="fios-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
-                Auto-Fill Proposal
-            </button>
-            <button id="fios-generate-reply" class="fios-btn" style="margin-top:10px;">
-                <svg class="fios-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
-                Smart Reply
-            </button>
+        <div style="display: flex; gap: 8px;">
+            <button id="fios-generate-proposal" class="fios-btn">Generate Proposal</button>
+            <button id="fios-generate-reply" class="fios-btn">Smart Reply</button>
         </div>
     `;
 
     document.body.appendChild(fiosPanel);
-
     attachPanelEvents();
-
     return fiosPanel;
 }
 
 function attachPanelEvents() {
+    const sendBtn = document.getElementById("fios-chat-send");
+    const input = document.getElementById("fios-chat-input");
+
+    const sendMessage = async () => {
+        const text = input.value.trim();
+        if (!text) return;
+        
+        input.value = "";
+        addChatMessage(text, "user");
+        
+        updateStatus("Thinking...", "processing");
+        const response = await callFIOSChat(text);
+        addChatMessage(response, "agent");
+        updateStatus("Online", "success");
+    };
+
+    sendBtn.onclick = sendMessage;
+    input.onkeypress = (e) => { if (e.key === "Enter") sendMessage(); };
+
     document.getElementById("fios-generate-reply").onclick = generateReply;
     document.getElementById("fios-generate-proposal").onclick = generateAndInjectProposal;
 }
 
+function addChatMessage(text, sender) {
+    const history = document.getElementById("fios-chat-history");
+    const msg = document.createElement("div");
+    msg.className = `fios-message fios-message-${sender}`;
+    msg.innerText = text;
+    history.appendChild(msg);
+    history.scrollTop = history.scrollHeight;
+}
+
 function updateStatus(text, state = "info") {
     const statusText = document.getElementById("fios-status-text");
-    const contentArea = document.getElementById("fios-content-area");
-    const statusDot = document.getElementById("fios-status-dot");
+    const display = document.getElementById("fios-status-display");
+    const dot = document.getElementById("fios-status-dot");
     
-    // Update top status text explicitly
-    if (statusText) {
-        if (state === "processing") statusText.innerText = "Processing";
-        else if (state === "ready" || state === "success") statusText.innerText = "Ready";
-        else if (state === "error") statusText.innerText = "Error";
-        else statusText.innerText = "Online";
-    }
+    if (statusText) statusText.innerText = state.toUpperCase();
+    if (display && state !== "success" ) display.innerText = text;
 
-    // Update main text
-    if (contentArea) {
-        contentArea.innerHTML = text;
-        if (state === "success") contentArea.classList.add("fios-success-text");
-        else contentArea.classList.remove("fios-success-text");
-    }
-    
-    // Update dot animations & colors
-    if (statusDot) {
-        if (state === "processing") {
-            statusDot.style.background = "#f59e0b"; // Yellow
-            statusDot.style.animation = "none";
-            statusDot.style.boxShadow = "none";
-        } else if (state === "ready" || state === "success") {
-            statusDot.style.background = "#10b981"; // Green
-            statusDot.style.animation = "pulseGlow 2s infinite";
-        } else if (state === "error") {
-            statusDot.style.background = "#ef4444"; // Red
-            statusDot.style.animation = "none";
-            statusDot.style.boxShadow = "none";
-        } else {
-            statusDot.style.background = "#10b981";
-            statusDot.style.animation = "pulseGlow 2s infinite";
-        }
+    if (dot) {
+        if (state === "processing") dot.style.background = "#f59e0b";
+        else if (state === "error") dot.style.background = "#ef4444";
+        else dot.style.background = "#10b981";
     }
 }
 
 async function generateReply() {
-    updateStatus("Analyzing conversation thread...", "processing");
-
+    updateStatus("Analyzing thread...", "processing");
     const messages = document.querySelectorAll('[data-test="message-text"]');
-
     if (!messages.length) {
-        updateStatus("No messages found to analyze.", "error");
+        addChatMessage("No conversation messages detected.", "agent");
+        updateStatus("Online", "error");
         return;
     }
-
     const lastMessage = messages[messages.length - 1].innerText;
-
-    const response = await callFIOSChat(`Client said: ${lastMessage}`);
-
+    const response = await callFIOSChat(`Generate a winning reply to: ${lastMessage}`);
     injectReply(response);
-    updateStatus("🧠 Smart Reply injected and ready!", "success");
+    addChatMessage("Generated and injected smart reply.", "agent");
+    updateStatus("Online", "success");
 }
 
 async function generateProposal() {
-    updateStatus("Scanning job details...", "processing");
-
+    updateStatus("Analyzing job...", "processing");
     const title = document.querySelector('[data-test="job-title"]')?.innerText || document.querySelector('h1')?.innerText || "";
     const description = document.querySelector('[data-test="job-description"]')?.innerText || document.querySelector('.job-description')?.innerText || "";
-
-    const payload = {
-        user_id: "upwork_user",
-        job_data: {
-            title: title,
-            description: description
-        }
-    };
-
+    
     try {
         const res = await fetch(FIOS_API_JOB, {
             method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify(payload)
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ user_id: "upwork_user", job_data: { title, description } })
         });
-
         const result = await res.json();
-        updateStatus(`Win Probability: <span class="fios-highlight-text">${result.win_probability}%</span>`, "ready");
-        
-        if (result.win_probability > 75) {
-            generateAndInjectProposal();
-        }
+        updateStatus(`Win Probability: ${result.win_probability}%`, "success");
+        if (result.win_probability > 75) generateAndInjectProposal();
     } catch (e) {
-        updateStatus("Analysis Failed check API.", "error");
-        console.error(e);
+        updateStatus("Analysis Error", "error");
     }
 }
 
 async function generateAndInjectProposal() {
-    updateStatus("Generating optimized proposal...", "processing");
-
+    updateStatus("Crafting proposal...", "processing");
     const title = document.querySelector('[data-test="job-title"]')?.innerText || document.querySelector('h1')?.innerText || "";
     const description = document.querySelector('[data-test="job-description"]')?.innerText || document.querySelector('.job-description')?.innerText || "";
-
-    const message = `
-Write a proposal for this job:
-
-Title: ${title}
-
-Description: ${description}
-`;
-
-    const response = await callFIOSChat(message);
+    const response = await callFIOSChat(`Write a high-conversion proposal for: ${title}. Description: ${description}`);
     injectProposalIntoUpwork(response);
-
-    updateStatus("🚀 Proposal generated and injected!", "success");
+    addChatMessage("Proposal injected. Good luck!", "agent");
+    updateStatus("Online", "success");
 }
 
 async function callFIOSChat(message) {
     try {
         const res = await fetch(FIOS_API_CHAT, {
             method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-                user_id: "upwork_user",
-                message: message
-            })
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ user_id: "upwork_user", message: message })
         });
-
         const result = await res.json();
-        return result.response;
+        return result.response || "No response details.";
     } catch (e) {
-        console.error("Chat failure:", e);
-        return "Failed to connect to FIOS backend.";
+        return "Critical Error: Could not reach FIOS Brain. Check Coolify Logs.";
     }
 }
 
 function injectReply(text) {
     const box = document.querySelector('[data-test="message-compose-input"]');
-    if (box) {
-        box.innerText = text;
-    }
+    if (box) box.innerText = text;
 }
 
 function injectProposalIntoUpwork(proposalText) {
     const textarea = document.querySelector('textarea, [contenteditable="true"]');
-
-    if (!textarea) {
-        updateStatus("Proposal editor not found on page.", "error");
-        return;
-    }
-
+    if (!textarea) return;
     textarea.focus();
-
-    if (textarea.tagName === "TEXTAREA") {
-        textarea.value = proposalText;
-    } else {
-        textarea.innerText = proposalText;
-    }
-
+    if (textarea.tagName === "TEXTAREA") textarea.value = proposalText;
+    else textarea.innerText = proposalText;
     textarea.dispatchEvent(new Event("input", { bubbles: true }));
 }
 
 function autoInitializeFIOS() {
     createFIOSPanel();
-    console.log("FIOS Floating UI initialized");
-    
-    // Auto-analyze job if on a job page or proposal page
     if (window.location.href.includes("/jobs/") || window.location.href.includes("/proposals/")) {
         generateProposal();
     }
