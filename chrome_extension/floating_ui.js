@@ -1,5 +1,5 @@
-const FIOS_API_CHAT = "https://fios-api.themenuagency.com/api/chat";
-const FIOS_API_JOB = "https://fios-api.themenuagency.com/api/job/analyze";
+const FIOS_API_CHAT = "https://api.themenuagency.com/fios/api/chat";
+const FIOS_API_JOB = "https://api.themenuagency.com/fios/api/job/analyze";
 
 let fiosPanel = null;
 

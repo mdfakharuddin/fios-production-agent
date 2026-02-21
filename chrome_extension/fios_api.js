@@ -1,4 +1,4 @@
-const FIOS_API_URL = "https://fios-api.themenuagency.com/api/chat";
+const FIOS_API_URL = "https://api.themenuagency.com/fios/api/chat";
 
 async function queryFIOS(message, conversationId=null, metadata={}) {
 
@@ -31,7 +31,7 @@ async function sendJobsToFIOS(jobs) {
     for (const job of jobs) {
         try {
             const response = await fetch(
-                "https://fios-api.themenuagency.com/api/job/analyze",
+                "https://api.themenuagency.com/fios/api/job/analyze",
                 {
                     method: "POST",
                     headers: {
