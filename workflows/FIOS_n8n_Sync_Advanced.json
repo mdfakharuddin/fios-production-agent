@@ -1,0 +1,133 @@
+{
+  "name": "FIOS ADVANCED BRAIN SYNC",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "fios-brain-sync",
+        "options": {}
+      },
+      "id": "webhook-node",
+      "name": "FIOS Receiver",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        250,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.type }}",
+              "value2": "job_details"
+            }
+          ]
+        }
+      },
+      "id": "is-job",
+      "name": "Is New Job?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        450,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "modelId": "google/gemini-2.0-flash-001",
+        "messages": {
+          "message": [
+            {
+              "content": "Analyze this Upwork job for a freelancer with skills in {{ $('FIOS Receiver').item.json.data.skills_required }}. \n\nJob Title: {{ $('FIOS Receiver').item.json.data.title }}\nJob Desc: {{ $('FIOS Receiver').item.json.data.description }}\n\nIs this a high-value opportunity? Rate 1-10 and explain why. Output just raw text."
+            }
+          ]
+        }
+      },
+      "id": "llm-analyzer",
+      "name": "Strategic Deep Dive",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        650,
+        280
+      ],
+      "notesInFlow": true,
+      "notes": "Queries OpenRouter for a second opinion"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "mode": "url",
+          "value": "https://docs.google.com/spreadsheets/d/YOUR_SHEET_ID_HERE"
+        },
+        "sheetName": "Sheet1",
+        "valuesSend": "map",
+        "mappingMode": "defineItems",
+        "data": {
+          "items": [
+            {
+              "column": "Date",
+              "value": "={{ $now }}"
+            },
+            {
+              "column": "Title",
+              "value": "={{ $('FIOS Receiver').item.json.data.title }}"
+            },
+            {
+              "column": "Score",
+              "value": "={{ JSON.parse($('Strategic Deep Dive').item.json.body).score || 'N/A' }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "google-sheets",
+      "name": "Log to CRM",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        850,
+        280
+      ]
+    }
+  ],
+  "connections": {
+    "FIOS Receiver": {
+      "main": [
+        [
+          {
+            "node": "Is New Job?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is New Job?": {
+      "main": [
+        [
+          {
+            "node": "Strategic Deep Dive",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Strategic Deep Dive": {
+      "main": [
+        [
+          {
+            "node": "Log to CRM",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}

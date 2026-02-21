@@ -1,0 +1,79 @@
+{
+  "name": "FIOS Native n8n Chat AI",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "chat-trigger",
+      "name": "When chat message received",
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "position": [ 300, 300 ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "options": {
+          "systemMessage": "You are FIOS, the strategic Upwork AI advisor. You evaluate Upwork conversations and assist the freelancer with winning jobs."
+        }
+      },
+      "id": "ai-agent",
+      "name": "FIOS Chat Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "position": [ 560, 300 ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "model": "gpt-4o"
+      },
+      "id": "openai-model",
+      "name": "OpenAI Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "position": [ 560, 520 ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {},
+      "id": "memory",
+      "name": "Window Buffer Memory",
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "position": [ 700, 540 ],
+      "typeVersion": 1
+    }
+  ],
+  "connections": {
+    "When chat message received": {
+      "main": [
+        [
+          {
+            "node": "FIOS Chat Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "FIOS Chat Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Window Buffer Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "FIOS Chat Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {}
+}

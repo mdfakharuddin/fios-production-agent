@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Vantage Intelligence</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #f8fafc;
+      --surface: #ffffff;
+      --border: #e5e7eb;
+      --primary: #2563eb;
+      --primary-hover: #1d4ed8;
+      --success: #16a34a;
+      --warning: #f59e0b;
+      --danger: #dc2626;
+      --text: #1f2937;
+      --muted: #6b7280;
+      --radius: 12px;
+      --shadow: 0 1px 2px 0 rgba(0,0,0,0.05);
+    }
+
+    body {
+      width: 420px;
+      min-height: 500px;
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      font-size: 14px;
+      line-height: 1.5;
+      overflow-x: hidden;
+      position: relative;
+    }
+
+    .hidden { display: none !important; }
+
+    /* ── Header ────────────────────────────────────────── */
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+    }
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .header-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--success);
+      flex-shrink: 0;
+    }
+    .header-dot.offline { background: var(--muted); }
+    .header-title {
+      font-weight: 700;
+      font-size: 15px;
+      letter-spacing: -0.2px;
+    }
+    .gear-btn {
+      width: 32px; height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      cursor: pointer;
+      transition: background 150ms ease;
+      font-size: 16px;
+      color: var(--muted);
+    }
+    .gear-btn:hover { background: var(--bg); color: var(--text); }
+
+    /* ── Main Panel ────────────────────────────────────── */
+    .main { padding: 16px; display: flex; flex-direction: column; gap: 16px; }
+
+    .ctx-label {
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      color: var(--muted);
+      margin-bottom: 4px;
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 16px;
+    }
+
+    .section-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .section-title .icon { font-size: 15px; }
+
+    /* ── Buttons ───────────────────────────────────────── */
+    .btn {
+      width: 100%;
+      padding: 10px 14px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 150ms ease;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 6px;
+      border: 1px solid transparent;
+      user-select: none;
+    }
+    .btn:disabled { opacity: 0.55; cursor: not-allowed; pointer-events: none; }
+    .btn-primary { background: var(--primary); color: #fff; }
+    .btn-primary:hover:not(:disabled) { background: var(--primary-hover); }
+    .btn-secondary { background: var(--surface); color: var(--text); border-color: var(--border); }
+    .btn-secondary:hover:not(:disabled) { background: var(--bg); }
+    .btn-copy {
+      background: #f3f4f6; color: var(--text); border: 1px solid var(--border);
+      font-size: 11px; padding: 5px 10px; width: auto; border-radius: 6px;
+    }
+    .btn-copy:hover { background: #e5e7eb; }
+    .btn-group { display: flex; flex-direction: column; gap: 8px; }
+
+    /* ── Badges ────────────────────────────────────────── */
+    .badge {
+      display: inline-flex; align-items: center; justify-content: center;
+      padding: 2px 10px; border-radius: 20px;
+      font-size: 11px; font-weight: 700; letter-spacing: 0.3px;
+    }
+    .badge-apply { background: rgba(22,163,74,0.1); color: var(--success); }
+    .badge-skip { background: rgba(220,38,38,0.1); color: var(--danger); }
+    .badge-caution { background: rgba(245,158,11,0.1); color: var(--warning); }
+    .badge-score {
+      background: var(--primary); color: #fff;
+      font-size: 18px; font-weight: 700;
+      width: 44px; height: 44px; border-radius: 50%;
+      display: inline-flex; align-items: center; justify-content: center;
+    }
+
+    /* ── AI Output ─────────────────────────────────────── */
+    .ai-area { margin-top: 14px; border-top: 1px solid var(--border); padding-top: 14px; }
+    .ai-block { margin-bottom: 10px; }
+    .ai-label {
+      font-size: 10px; font-weight: 600; text-transform: uppercase;
+      letter-spacing: 0.4px; color: var(--muted); margin-bottom: 4px;
+    }
+    .ai-value {
+      color: var(--text); background: var(--bg);
+      padding: 8px 10px; border-radius: 8px; border: 1px solid var(--border);
+      font-size: 13px; line-height: 1.55; white-space: pre-wrap;
+    }
+    .ai-value ul { padding-left: 16px; margin: 4px 0; }
+    .ai-value li { margin-bottom: 2px; }
+
+    .skeleton { animation: pulse 1.5s infinite; background: var(--border); height: 14px; border-radius: 4px; margin-bottom: 8px; }
+    .skeleton.w-full { width: 100%; }
+    .skeleton.w-80 { width: 80%; }
+    .skeleton.w-60 { width: 60%; }
+    @keyframes pulse { 0%,100% { opacity: 0.4; } 50% { opacity: 1; } }
+
+    .loader-wrap { padding: 8px 0; }
+    .loader-hint { font-size: 11px; color: var(--muted); text-align: center; margin-top: 8px; }
+
+    /* ── Project Cards (Similar Work) ──────────────────── */
+    .proj-card {
+      background: var(--bg); border: 1px solid var(--border);
+      border-radius: 8px; padding: 10px 12px; margin-bottom: 8px;
+    }
+    .proj-title { font-weight: 600; font-size: 13px; }
+    .proj-meta { font-size: 11px; color: var(--muted); margin-top: 2px; }
+    .proj-badge {
+      font-size: 10px; font-weight: 600; padding: 1px 6px; border-radius: 4px;
+      display: inline-block; margin-top: 4px;
+    }
+    .proj-badge.won { background: rgba(22,163,74,0.12); color: var(--success); }
+    .proj-badge.closed { background: rgba(107,114,128,0.12); color: var(--muted); }
+
+    /* ── Empty State ───────────────────────────────────── */
+    .empty-state {
+      text-align: center; padding: 32px 16px;
+      color: var(--muted); font-size: 13px;
+    }
+    .empty-state .empty-icon { font-size: 28px; margin-bottom: 8px; opacity: 0.5; }
+
+    /* ── Gear Slide Panel ──────────────────────────────── */
+    .gear-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.15);
+      z-index: 900; opacity: 0; pointer-events: none;
+      transition: opacity 200ms ease;
+    }
+    .gear-overlay.open { opacity: 1; pointer-events: auto; }
+
+    .gear-panel {
+      position: fixed; top: 0; right: -320px; bottom: 0;
+      width: 310px; background: var(--surface);
+      border-left: 1px solid var(--border);
+      box-shadow: -4px 0 12px rgba(0,0,0,0.08);
+      z-index: 1000;
+      transition: right 250ms cubic-bezier(0.4, 0, 0.2, 1);
+      display: flex; flex-direction: column;
+      overflow-y: auto;
+    }
+    .gear-panel.open { right: 0; }
+
+    .gear-header {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 14px 16px; border-bottom: 1px solid var(--border);
+      font-weight: 700; font-size: 14px;
+    }
+    .gear-close {
+      width: 28px; height: 28px; display: flex; align-items: center; justify-content: center;
+      border: none; background: transparent; cursor: pointer;
+      font-size: 18px; color: var(--muted); border-radius: 6px;
+    }
+    .gear-close:hover { background: var(--bg); color: var(--text); }
+
+    .gear-body { padding: 16px; display: flex; flex-direction: column; gap: 20px; }
+
+    .gear-section-title {
+      font-size: 10px; font-weight: 600; text-transform: uppercase;
+      letter-spacing: 0.5px; color: var(--muted); margin-bottom: 10px;
+    }
+
+    /* Toggle */
+    .toggle-row { display: flex; justify-content: space-between; align-items: center; padding: 4px 0; }
+    .toggle-info .toggle-name { font-weight: 500; font-size: 13px; }
+    .toggle-info .toggle-desc { font-size: 11px; color: var(--muted); }
+    .switch { position: relative; display: inline-block; width: 34px; height: 18px; flex-shrink: 0; }
+    .switch input { opacity: 0; width: 0; height: 0; }
+    .slider {
+      position: absolute; cursor: pointer; inset: 0;
+      background: #d1d5db; transition: .2s ease; border-radius: 20px;
+    }
+    .slider:before {
+      position: absolute; content: ""; height: 14px; width: 14px;
+      left: 2px; bottom: 2px; background: #fff;
+      transition: .2s ease; border-radius: 50%;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+    }
+    input:checked + .slider { background: var(--primary); }
+    input:checked + .slider:before { transform: translateX(16px); }
+
+    /* Radio Group */
+    .radio-group { display: flex; flex-direction: column; gap: 6px; }
+    .radio-row {
+      display: flex; align-items: center; gap: 8px;
+      font-size: 13px; cursor: pointer;
+    }
+    .radio-row input[type="radio"] { accent-color: var(--primary); }
+
+    /* Stats */
+    .gear-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; }
+    .gear-stat {
+      background: var(--bg); border: 1px solid var(--border);
+      border-radius: 8px; padding: 8px; text-align: center;
+    }
+    .gear-stat-val { font-size: 16px; font-weight: 700; color: var(--primary); }
+    .gear-stat-label { font-size: 9px; font-weight: 600; text-transform: uppercase; color: var(--muted); }
+    .gear-sync-ts { font-size: 10px; color: var(--muted); text-align: center; margin-top: 6px; }
+  </style>
+</head>
+<body>
+
+  <!-- ─── Header ───────────────────────────────────────── -->
+  <div class="header">
+    <div class="header-left">
+      <div class="header-dot" id="conn-dot" style="margin-right: 2px;"></div>
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color: var(--primary); margin-right: 4px;">
+        <path d="M12 2a5 5 0 0 0-5 5v1a4 4 0 0 0-4 4 3 3 0 0 0 3 3 2 2 0 0 1 2 2 4 4 0 0 0 8 0 2 2 0 0 1 2-2 3 3 0 0 0 3-3 4 4 0 0 0-4-4V7a5 5 0 0 0-5-5Z"></path>
+      </svg>
+      <span class="header-title">Vantage Intelligence</span>
+    </div>
+    <button class="gear-btn" id="open-gear" title="Settings">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="3"></circle>
+        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82 1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1Z"></path>
+      </svg>
+    </button>
+  </div>
+
+  <!-- ─── Main Panel ───────────────────────────────────── -->
+  <div class="main">
+
+    <!-- Empty / Default -->
+    <div id="state-empty" class="empty-state">
+      <div class="empty-icon">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="opacity: 0.6; margin-bottom: 8px;">
+          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+        </svg>
+      </div>
+      <strong>Vantage Chat is Active</strong><br>Open the floating chat panel on any Upwork page to interact seamlessly.
+    </div>
+
+    <!-- ── AI Output Area (shared) ──────────────────────── -->
+    <div id="ai-output" class="hidden">
+      <div id="ai-loader" class="hidden loader-wrap">
+        <div class="skeleton w-full"></div>
+        <div class="skeleton w-80"></div>
+        <div class="skeleton w-60"></div>
+        <div class="loader-hint">Analyzing context…</div>
+      </div>
+      <div id="ai-results"></div>
+    </div>
+
+  </div>
+
+  <!-- ─── Gear Overlay ─────────────────────────────────── -->
+  <div class="gear-overlay" id="gear-overlay"></div>
+
+  <!-- ─── Gear Slide Panel ─────────────────────────────── -->
+  <div class="gear-panel" id="gear-panel">
+    <div class="gear-header">
+      <span>Settings</span>
+      <button class="gear-close" id="close-gear">✕</button>
+    </div>
+    <div class="gear-body">
+
+      <!-- Data Sync -->
+      <div>
+        <div class="gear-section-title">Data Sync</div>
+        <div class="toggle-row">
+          <div class="toggle-info">
+            <div class="toggle-name">Proposal Extraction</div>
+            <div class="toggle-desc">Passively detect proposals</div>
+          </div>
+          <label class="switch"><input type="checkbox" id="tog-prop"><span class="slider"></span></label>
+        </div>
+        <div class="toggle-row" style="margin-top:8px;">
+          <div class="toggle-info">
+            <div class="toggle-name">Conversation Sync</div>
+            <div class="toggle-desc">Passively detect messages</div>
+          </div>
+          <label class="switch"><input type="checkbox" id="tog-convo"><span class="slider"></span></label>
+        </div>
+        <div class="gear-stats">
+          <div class="gear-stat">
+            <div class="gear-stat-val" id="g-proposals">--</div>
+            <div class="gear-stat-label">Proposals</div>
+          </div>
+          <div class="gear-stat">
+            <div class="gear-stat-val" id="g-convos">--</div>
+            <div class="gear-stat-label">Conversations</div>
+          </div>
+        </div>
+        <div class="gear-sync-ts" id="g-last-sync">Last synced: Never</div>
+      </div>
+
+      <!-- AI Settings -->
+      <div>
+        <div class="gear-section-title">AI Settings</div>
+
+        <div style="margin-bottom:12px;">
+          <div style="font-size:12px;font-weight:600;margin-bottom:6px;">Tone Strictness</div>
+          <div class="radio-group">
+            <label class="radio-row"><input type="radio" name="tone" value="flexible"> Flexible</label>
+            <label class="radio-row"><input type="radio" name="tone" value="balanced" checked> Balanced</label>
+            <label class="radio-row"><input type="radio" name="tone" value="strict"> Strict Voice</label>
+          </div>
+        </div>
+
+        <div>
+          <div style="font-size:12px;font-weight:600;margin-bottom:6px;">Reply Length</div>
+          <div class="radio-group">
+            <label class="radio-row"><input type="radio" name="length" value="short"> Short</label>
+            <label class="radio-row"><input type="radio" name="length" value="medium" checked> Medium</label>
+            <label class="radio-row"><input type="radio" name="length" value="detailed"> Detailed</label>
+          </div>
+        </div>
+      </div>
+
+      <!-- Performance -->
+      <div>
+        <div class="gear-section-title">Performance</div>
+        <div class="toggle-row">
+          <div class="toggle-info"><div class="toggle-name">Low Latency Mode</div></div>
+          <label class="switch"><input type="checkbox" id="tog-lowlat"><span class="slider"></span></label>
+        </div>
+        <div class="toggle-row" style="margin-top:8px;">
+          <div class="toggle-info"><div class="toggle-name">Disable Strategy Enhancements</div></div>
+          <label class="switch"><input type="checkbox" id="tog-nostrat"><span class="slider"></span></label>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

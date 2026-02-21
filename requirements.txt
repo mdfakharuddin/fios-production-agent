@@ -1,0 +1,9 @@
+fastapi
+uvicorn[standard]
+asyncpg
+sqlalchemy
+pgvector
+httpx
+apscheduler
+python-dotenv
+pydantic

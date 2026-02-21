@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>FIOS UI Test</title>
+    <link rel="stylesheet" href="chrome_extension/content_scripts/floating_ui.css">
+    <style>
+        body { background: #111; color: #fff; font-family: 'Inter', sans-serif; padding: 20px; }
+        .mock-thread { margin-bottom: 20px; border: 1px solid #333; padding: 10px; }
+    </style>
+</head>
+<body>
+    <h1>FIOS UI Test Mockup</h1>
+    <div class="mock-thread">
+        <h2 class="up-chat-room-header-title">Design Project - Logo & Branding</h2>
+        <div role="log" class="scroll-wrapper" style="height: 200px; overflow-y: auto;">
+            <div class="up-d-story" data-message-id="1"><strong>Client:</strong> Hello, are you available? <span>10:20 AM</span></div>
+            <div class="up-d-story" data-message-id="2"><strong>Freelancer:</strong> Yes, I am! <span>10:21 AM</span></div>
+            <div class="up-d-story" data-message-id="3"><strong>Client:</strong> Great, let's start. <span>10:25 AM</span></div>
+        </div>
+    </div>
+
+    <!-- UI will be injected here -->
+    <div id="fios-mount"></div>
+
+    <script src="chrome_extension/content_scripts/floating_ui.js"></script>
+    <script>
+        // Mocking chrome.storage
+        window.chrome = {
+            storage: {
+                local: {
+                    get: (keys, cb) => cb({ silosAutoSync: true }),
+                    set: (obj) => console.log('Mock Storage Set:', obj)
+                }
+            },
+            runtime: {
+                id: 'mock-id'
+            }
+        };
+
+        // Manual injection since we aren't in an extension context
+        setTimeout(() => {
+            const mount = document.getElementById('fios-mount');
+            const shadow = mount.attachShadow({mode: 'open'});
+            
+            // Link CSS
+            const link = document.createElement('link');
+            link.rel = 'stylesheet';
+            link.href = 'chrome_extension/content_scripts/floating_ui.css';
+            shadow.appendChild(link);
+            
+            // Wait for script to register global function if any, 
+            // but our script is self-invoking or attaches to window. 
+            // In reality, scraper.js handles the mount.
+            // I'll manually trigger the logic from floating_ui.js if needed.
+        }, 500);
+    </script>
+</body>
+</html>

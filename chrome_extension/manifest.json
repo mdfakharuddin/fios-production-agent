@@ -1,0 +1,38 @@
+{
+  "manifest_version": 3,
+  "name": "Vantage Intelligence",
+  "version": "2.0",
+  "description": "Strategic AI Advisor for Upwork — Decision Intelligence, Proposal Generation, Conversation Analysis.",
+  "permissions": [
+    "activeTab",
+    "scripting",
+    "storage",
+    "tabs",
+    "alarms",
+    "notifications"
+  ],
+  "host_permissions": [
+    "https://*.upwork.com/*",
+    "http://127.0.0.1:8000/*",
+    "http://127.0.0.1:5001/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_popup": "popup/popup.html"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://*.upwork.com/*"],
+      "js": ["fios_api.js", "floating_ui.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["content_scripts/floating_ui.css"],
+      "matches": ["https://*.upwork.com/*"]
+    }
+  ]
+}
