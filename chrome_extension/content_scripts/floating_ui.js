@@ -103,7 +103,7 @@
     }
 
     const result = await response.json();
-    return result.output || result.response || (typeof result === 'string' ? result : JSON.stringify(result));
+    return result.output || result.response || result.data || (typeof result === 'string' ? result : JSON.stringify(result));
   }
 
   function escapeHtml(value) {
