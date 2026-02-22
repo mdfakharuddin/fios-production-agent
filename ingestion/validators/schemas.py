@@ -38,5 +38,5 @@ class RawConversationData(BaseModel):
 class IngestionPayload(BaseModel):
     type: str = Field(..., description="Type of data: 'job_details', 'proposals', 'conversation', 'generic_page', or 'stealth_proposal_job_merge'")
     data: dict | List[dict]
-    url: str
-    timestamp: str
+    url: str = ""
+    timestamp: str = ""

@@ -102,7 +102,7 @@ def _parse_json(raw: str) -> Dict:
 # ── System Role (Master Brain Prompt) ───────────────────────────────────────
 
 SYSTEM_PROMPT = """
-You are FIOS — a full-stack Freelance Intelligence Operating System.
+You are Upie — a full-stack Freelance Intelligence Operating System.
 
 You are not a chatbot.
 You are not a text generator.
@@ -516,7 +516,7 @@ Return JSON:
 "pricing_hint": "$X-Y/hr or fixed estimate",
 "confidence_level": "HIGH" or "MEDIUM" or "LOW"}}"""
 
-        raw = await _call_ai(prompt, SYSTEM_ROLE, max_tokens=800)
+        raw = await _call_ai(prompt, SYSTEM_PROMPT, max_tokens=800)
         result = _parse_json(raw)
 
         if not result:
@@ -577,7 +577,7 @@ Return JSON:
 "positioning_strategy": "how to position in this conversation",
 "confidence_level": "HIGH" or "MEDIUM" or "LOW"}}"""
 
-        raw = await _call_ai(prompt, SYSTEM_ROLE, max_tokens=600)
+        raw = await _call_ai(prompt, SYSTEM_PROMPT, max_tokens=600)
         result = _parse_json(raw)
 
         if not result:
@@ -621,7 +621,7 @@ DRAFT:
 
 Return ONLY the rewritten proposal text. No JSON. No explanation. Just the proposal."""
 
-        raw = await _call_ai(prompt, SYSTEM_ROLE, max_tokens=800)
+        raw = await _call_ai(prompt, SYSTEM_PROMPT, max_tokens=800)
         return raw.strip() if raw else draft
 
     async def evaluate_proposal_draft(self, proposal_text: str, job_description: str = "") -> Dict:
@@ -639,7 +639,7 @@ Return JSON:
 "authority_injection_highlight": "what makes it authoritative, or null",
 "CTA_strength_feedback": "how strong is the call to action"}}"""
 
-        raw = await _call_ai(prompt, SYSTEM_ROLE, max_tokens=300)
+        raw = await _call_ai(prompt, SYSTEM_PROMPT, max_tokens=300)
         result = _parse_json(raw)
         return result or {"standout_score": 50, "genericness_warning": None,
                           "authority_injection_highlight": None, "CTA_strength_feedback": None}
@@ -659,7 +659,7 @@ Return JSON:
 {{"top_similar_projects": ["project1 summary", "project2 summary"],
 "copy_ready_experience_paragraph": "paste-ready paragraph about relevant experience"}}"""
 
-        raw = await _call_ai(prompt, SYSTEM_ROLE, max_tokens=400)
+        raw = await _call_ai(prompt, SYSTEM_PROMPT, max_tokens=400)
         result = _parse_json(raw)
         return result or {"top_similar_projects": [], "copy_ready_experience_paragraph": ""}
 

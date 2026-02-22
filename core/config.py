@@ -3,7 +3,7 @@ from typing import Optional
 import os
 
 class Settings(BaseSettings):
-    PROJECT_NAME: str = "Vantage AI Executive Architecture"
+    PROJECT_NAME: str = "Upie AI Intelligence"
     VERSION: str = "1.0.0"
     API_V1_STR: str = "/api/v1"
     
@@ -44,6 +44,6 @@ class Settings(BaseSettings):
     N8N_WEBHOOK_URL: Optional[str] = None
     OPENCLAW_WEBHOOK_URL: Optional[str] = None
     
-    model_config = SettingsConfigDict(env_file=os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".env"), case_sensitive=True)
+    model_config = SettingsConfigDict(env_file=os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".env"), case_sensitive=True, extra="ignore")
 
 settings = Settings()

@@ -4,6 +4,7 @@ from FIOS.orchestrator.triggers import triggers, EventType
 
 from FIOS.ingestion.validators.schemas import IngestionPayload, RawJobData, RawProposalData, RawConversationData
 from FIOS.ingestion.cleaners.normalizer import clean_budget, normalize_proposal_status, clean_text
+from FIOS.ingestion.cleaners.dom_semantic import extract_semantic_snapshot, infer_profile_from_snapshot
 
 from FIOS.database.connection import async_session_maker
 from FIOS.database.models.jobs import Job, JobOutcome
@@ -11,6 +12,7 @@ from FIOS.database.models.proposals import Proposal, ProposalStatus
 from FIOS.database.models.conversations import Conversation
 from FIOS.database.models.clients import Client
 from FIOS.database.models.analytics import Analytics
+from FIOS.database.models.freelancer_profiles import FreelancerProfile
 import json
 import re
 from datetime import datetime, timezone
@@ -59,6 +61,21 @@ def _parse_ts(ts_str: Optional[str]) -> Optional[datetime]:
         pass
 
     return None
+
+
+def _safe_float(value: Any, default: float = 0.0) -> float:
+    if value is None:
+        return default
+    if isinstance(value, (int, float)):
+        return float(value)
+    s = str(value)
+    m = re.search(r"[-+]?\d*\.?\d+", s.replace(",", ""))
+    if not m:
+        return default
+    try:
+        return float(m.group(0))
+    except Exception:
+        return default
 
 
 def _compute_analytics(messages: list) -> dict:
@@ -267,8 +284,14 @@ class IngestionPipeline:
         """
         print(f"1. Receiving raw {data_type} data...")
 
+        # Normalize required envelope fields for manual/internal callers.
+        payload_dict = dict(raw_payload or {})
+        payload_dict.setdefault("type", data_type)
+        payload_dict.setdefault("url", "manual://local")
+        payload_dict.setdefault("timestamp", datetime.utcnow().isoformat() + "Z")
+
         # 1. Validation
-        payload = IngestionPayload(**raw_payload)
+        payload = IngestionPayload(**payload_dict)
 
         record_ids = []
 
@@ -321,8 +344,8 @@ class IngestionPipeline:
 
                     new_proposal = Proposal(
                         job_id=dummy_job.id,
-                        cover_letter=clean_text(prop.get("proposal_text", prop.get("raw_text", ""))),
-                        bid_amount=float(prop.get("bid_amount", 0.0) or 0.0),
+                        cover_letter=clean_text(prop.get("proposal_text") or prop.get("cover_letter") or prop.get("raw_text") or ""),
+                        bid_amount=_safe_float(prop.get("bid_amount", 0.0)),
                         status=status,
                         connects_spent=0
                     )
@@ -349,10 +372,201 @@ class IngestionPipeline:
                     except Exception as e:
                         print("Embed error:", e)
 
+            elif payload.type == "proposal_submission":
+                prop = payload.data if isinstance(payload.data, dict) else {}
+                status = normalize_proposal_status(prop.get("outcome", prop.get("status", "submitted")))
+                proposal_link = prop.get("proposal_link") or payload.url
+                job_key = f"proposal_submission:{proposal_link}"[:255]
+
+                from sqlalchemy import select
+                existing_job_stmt = select(Job).where(Job.upwork_job_id == job_key)
+                existing_job_res = await session.execute(existing_job_stmt)
+                existing_job = existing_job_res.scalar_one_or_none()
+
+                if existing_job:
+                    new_job = existing_job
+                else:
+                    new_job = Job(
+                        upwork_job_id=job_key,
+                        title=prop.get("job_title", "Proposal Submission"),
+                        description=clean_text(prop.get("job_description", prop.get("raw_text", "Submitted proposal context"))),
+                        budget_type="fixed",
+                        budget_min=0.0,
+                        budget_max=0.0,
+                        category="Proposal Submission",
+                        meta_data={"proposal_link": proposal_link},
+                    )
+                    session.add(new_job)
+                    await session.flush()
+
+                new_proposal = Proposal(
+                    job_id=new_job.id,
+                    cover_letter=clean_text(prop.get("cover_letter", prop.get("proposal_text", ""))),
+                    bid_amount=_safe_float(prop.get("bid_amount", 0.0)),
+                    status=status,
+                    connects_spent=0,
+                )
+                session.add(new_proposal)
+                await session.flush()
+
+                record_ids.extend([str(new_job.id), str(new_proposal.id)])
+
+                try:
+                    from FIOS.memory.embedder import embed_proposal_incremental
+                    outcome = "pending"
+                    if "hired" in status.lower() or "active" in status.lower():
+                        outcome = "won"
+                    elif "declined" in status.lower() or "withdrawn" in status.lower() or "archived" in status.lower():
+                        outcome = "lost"
+                    await embed_proposal_incremental(
+                        proposal_id=proposal_link or str(new_proposal.id),
+                        text=new_proposal.cover_letter,
+                        outcome=outcome,
+                        job_title=new_job.title,
+                    )
+                except Exception:
+                    pass
+
+            elif payload.type == "profile_sync":
+                p = payload.data if isinstance(payload.data, dict) else {}
+                name = p.get("name", "Freelancer")
+
+                from sqlalchemy import select
+                existing_result = await session.execute(
+                    select(FreelancerProfile).order_by(FreelancerProfile.updated_at.desc())
+                )
+                existing = existing_result.scalars().first()
+
+                if existing:
+                    existing.name = name or existing.name
+                    existing.title = p.get("title", existing.title)
+                    existing.overview = p.get("overview", existing.overview)
+                    existing.skills = p.get("skills", existing.skills) or []
+                    existing.hourly_rate = _safe_float(p.get("hourly_rate", existing.hourly_rate), default=existing.hourly_rate or 0.0)
+                    existing.niches = p.get("niches", existing.niches) or existing.skills or []
+                    existing.style_guide = p.get("style_guide", existing.style_guide)
+                    session.add(existing)
+                    await session.flush()
+                    record_ids.append(str(existing.id))
+                else:
+                    profile = FreelancerProfile(
+                        name=name,
+                        title=p.get("title", ""),
+                        overview=p.get("overview", ""),
+                        skills=p.get("skills", []),
+                        hourly_rate=_safe_float(p.get("hourly_rate", 0.0)),
+                        niches=p.get("niches", []),
+                        style_guide=p.get("style_guide", ""),
+                    )
+                    session.add(profile)
+                    await session.flush()
+                    record_ids.append(str(profile.id))
+
+            elif payload.type in ("dom_snapshot", "universal_dom_snapshot", "generic_page"):
+                snap = payload.data if isinstance(payload.data, dict) else {}
+                semantic = extract_semantic_snapshot(
+                    url=payload.url,
+                    html=snap.get("html", snap.get("raw_html", "")),
+                    page_text=snap.get("page_text", snap.get("raw_text", "")),
+                )
+
+                page_type = semantic.get("page_type", "generic")
+                b_info = clean_budget(semantic.get("budget", ""))
+                fingerprint = semantic.get("page_fingerprint")
+
+                from sqlalchemy import select
+                existing_stmt = select(Job).where(Job.upwork_job_id == f"dom:{fingerprint}")
+                existing_res = await session.execute(existing_stmt)
+                existing_job = existing_res.scalar_one_or_none()
+
+                description = semantic.get("clean_text", "")[:30000]
+                title = semantic.get("title", "DOM Snapshot")
+                meta = {
+                    "source": "dom_snapshot",
+                    "page_type": page_type,
+                    "url": payload.url,
+                    "client_hire_rate": semantic.get("client_hire_rate"),
+                    "client_total_spend": semantic.get("client_total_spend"),
+                    "keywords": semantic.get("keywords", []),
+                }
+
+                if existing_job:
+                    existing_job.title = title or existing_job.title
+                    existing_job.description = description or existing_job.description
+                    existing_job.meta_data = {**(existing_job.meta_data or {}), **meta}
+                    session.add(existing_job)
+                    await session.flush()
+                    record_ids.append(str(existing_job.id))
+                else:
+                    new_job = Job(
+                        upwork_job_id=f"dom:{fingerprint}",
+                        title=title,
+                        description=description,
+                        budget_type=b_info["budget_type"],
+                        budget_min=b_info["min"],
+                        budget_max=b_info["max"],
+                        category=f"DOM Snapshot::{page_type}",
+                        skills_required=semantic.get("keywords", []),
+                        meta_data=meta,
+                    )
+                    session.add(new_job)
+                    await session.flush()
+                    record_ids.append(str(new_job.id))
+
+                try:
+                    from FIOS.memory.embedder import embed_job_incremental
+                    await embed_job_incremental(
+                        str(record_ids[0]) if record_ids else "",
+                        title,
+                        description,
+                    )
+                except Exception:
+                    pass
+
+                # If the DOM represents freelancer profile context, update profile memory.
+                if page_type == "profile":
+                    inferred = infer_profile_from_snapshot(semantic)
+                    profile_result = await session.execute(
+                        select(FreelancerProfile).order_by(FreelancerProfile.updated_at.desc())
+                    )
+                    profile = profile_result.scalars().first()
+                    if profile:
+                        profile.name = inferred.get("name") or profile.name
+                        profile.title = inferred.get("title") or profile.title
+                        profile.overview = inferred.get("overview") or profile.overview
+                        profile.skills = inferred.get("skills") or profile.skills
+                        profile.niches = inferred.get("niches") or profile.niches
+                        if inferred.get("hourly_rate"):
+                            profile.hourly_rate = inferred["hourly_rate"]
+                        session.add(profile)
+                    else:
+                        session.add(
+                            FreelancerProfile(
+                                name=inferred.get("name", "Freelancer"),
+                                title=inferred.get("title", ""),
+                                overview=inferred.get("overview", ""),
+                                skills=inferred.get("skills", []),
+                                hourly_rate=inferred.get("hourly_rate"),
+                                niches=inferred.get("niches", []),
+                                style_guide="",
+                            )
+                        )
+
             elif payload.type == "conversation":
                 conv_data = payload.data
                 room_id = conv_data.get("room_id")
                 messages = conv_data.get("messages", [])
+                client_sidebar = conv_data.get("client_sidebar") or {}
+                if not room_id and payload.url:
+                    room_match = re.search(r"room_([a-f0-9]+)", payload.url)
+                    if not room_match:
+                        room_match = re.search(r"/messages/rooms/([^/?]+)", payload.url)
+                    room_id = room_match.group(1) if room_match else None
+                    conv_data["room_id"] = room_id
+                if not room_id:
+                    fallback_seed = f"{payload.url}|{conv_data.get('thread_name', 'thread')}"
+                    room_id = f"fallback_{uuid.uuid5(uuid.NAMESPACE_URL, fallback_seed)}"
+                    conv_data["room_id"] = room_id
 
                 # ── BUG FIX: query existing_conv BEFORE using it ──────────
                 from sqlalchemy import select
@@ -383,6 +597,10 @@ class IngestionPipeline:
 
                             # Phase 1: Rich Analytics
                             existing_conv.analytics = _compute_analytics(updated_msgs)
+                            if client_sidebar:
+                                merged = dict(existing_conv.analytics or {})
+                                merged["client_sidebar"] = client_sidebar
+                                existing_conv.analytics = merged
 
                         session.add(existing_conv)
                         await session.flush()
@@ -406,6 +624,10 @@ class IngestionPipeline:
                         new_conv.last_message_timestamp = last_msg.get("time")
                         new_conv.last_message_preview = last_msg.get("text", "")[:200]
                         new_conv.analytics = _compute_analytics(messages)
+                        if client_sidebar:
+                            merged = dict(new_conv.analytics or {})
+                            merged["client_sidebar"] = client_sidebar
+                            new_conv.analytics = merged
 
                     session.add(new_conv)
                     await session.flush()
@@ -476,7 +698,7 @@ class IngestionPipeline:
                 msgs = payload.data.get("messages", []) if isinstance(payload.data, dict) else []
                 if room_id and msgs:
                     await embed_conversation_incremental(room_id, msgs)
-            elif payload.type == "job":
+            elif payload.type in ("job", "job_details"):
                 jdata = payload.data if isinstance(payload.data, dict) else {}
                 await embed_job_incremental(str(record_ids[0]) if record_ids else "", jdata.get("title", ""), jdata.get("description", ""))
         except Exception:

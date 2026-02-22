@@ -1,57 +1,78 @@
-const FIOS_API_URL = "https://api.themenuagency.com/fios/api/chat";
+const API_BASE = "https://api.themenuagency.com/fios";
+const ENDPOINTS = {
+  EXECUTE: `${API_BASE}/brain/execute`,
+  INGEST: `${API_BASE}/api/v1/ingest`,
+  INGEST_CONVERSATION: `${API_BASE}/api/v1/ingest/conversation`,
+  HEALTH: `${API_BASE}/health`
+};
 
-async function queryFIOS(message, conversationId=null, metadata={}) {
-
-    const payload = {
-        user_id: "upwork_user",
-        message: message,
-        conversation_id: conversationId,
-        metadata: metadata
-    };
-
-    try {
-        const response = await fetch(FIOS_API_URL, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify(payload)
-        });
-
-        const data = await response.json();
-        return data;
-
-    } catch (error) {
-        console.error("FIOS API Error:", error);
-        return null;
+async function queryFIOS(message, conversationId = null, context = {}) {
+  const payload = {
+    input: message,
+    source: "upie_extension",
+    conversation_id: conversationId || "ext_global_session",
+    context: {
+      timestamp: Date.now(),
+      ...context
     }
+  };
+
+  try {
+    const response = await fetch(ENDPOINTS.EXECUTE, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(`HTTP ${response.status}: ${text.slice(0, 240)}`);
+    }
+
+    return response.json();
+  } catch (error) {
+    console.error("FIOS API Error:", error);
+    return { status: "error", message: error.message || String(error) };
+  }
 }
 
 async function sendJobsToFIOS(jobs) {
-    for (const job of jobs) {
-        try {
-            const response = await fetch(
-                "https://api.themenuagency.com/fios/api/job/analyze",
-                {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json"
-                    },
-                    body: JSON.stringify({
-                        user_id: "upwork_user",
-                        job_data: job
-                    })
-                }
-            );
-            const result = await response.json();
-            console.log("FIOS Opportunity Score:", result);
-            
-            // If local storage is requested:
-            if (typeof storeOpportunity === 'function') {
-                await storeOpportunity(job, result);
-            }
-        } catch (error) {
-            console.error("FIOS job scan error:", error);
-        }
+  try {
+    const payload = {
+      url: "",
+      html: "",
+      text: Array.isArray(jobs) ? jobs.map((job) => `${job.title || ""}\n${job.description || ""}`).join("\n\n") : "",
+      page_type: "job_search",
+      jobs: jobs || [],
+      timestamp: Date.now()
+    };
+
+    const response = await fetch(ENDPOINTS.INGEST, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(`HTTP ${response.status}: ${text.slice(0, 240)}`);
     }
+
+    const result = await response.json();
+
+    if (typeof storeOpportunity === "function" && Array.isArray(jobs)) {
+      for (let i = 0; i < jobs.length; i += 1) {
+        await storeOpportunity(jobs[i] || {}, result?.opportunities?.[i] || {});
+      }
+    }
+
+    return result;
+  } catch (error) {
+    console.error("FIOS job scan error:", error);
+    return { status: "error", message: error.message || String(error) };
+  }
+}
+
+async function sendJobsToUpie(jobs) {
+  return sendJobsToFIOS(jobs);
 }

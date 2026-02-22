@@ -1,16 +1,12 @@
-const FIOS_API_CHAT = "https://api.themenuagency.com/fios/api/chat";
-const FIOS_API_JOB = "https://api.themenuagency.com/fios/api/job/analyze";
+// APIs are now routed through background.js (Vantage Router) to avoid CORS and hardcoded URLs
 
 let fiosPanel = null;
 
 function createFIOSPanel() {
     if (fiosPanel) return fiosPanel;
 
-    // Inject Google Font
-    const fontLink = document.createElement("link");
-    fontLink.href = "https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap";
-    fontLink.rel = "stylesheet";
-    document.head.appendChild(fontLink);
+    // Intentionally skipped loading Google Font due to CSP restrictions on Upwork
+
 
     // Inject Styles
     const style = document.createElement("style");
@@ -308,14 +304,20 @@ async function generateProposal() {
     const description = document.querySelector('[data-test="job-description"]')?.innerText || document.querySelector('.job-description')?.innerText || "";
     
     try {
-        const res = await fetch(FIOS_API_JOB, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ user_id: "upwork_user", job_data: { title, description } })
+        chrome.runtime.sendMessage({
+            action: "SEND_TO_Vantage",
+            payload: {
+                type: "job_analysis",
+                data: { title, description }
+            }
+        }, (result) => {
+            if (result && result.win_probability !== undefined) {
+                updateStatus(`Win Probability: ${result.win_probability}%`, "success");
+                if (result.win_probability > 75) generateAndInjectProposal();
+            } else {
+                updateStatus("Analysis Error", "error");
+            }
         });
-        const result = await res.json();
-        updateStatus(`Win Probability: ${result.win_probability}%`, "success");
-        if (result.win_probability > 75) generateAndInjectProposal();
     } catch (e) {
         updateStatus("Analysis Error", "error");
     }
@@ -332,31 +334,68 @@ async function generateAndInjectProposal() {
 }
 
 async function callFIOSChat(message) {
-    try {
-        const res = await fetch(FIOS_API_CHAT, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ user_id: "upwork_user", message: message })
+    return new Promise((resolve, reject) => {
+        chrome.runtime.sendMessage({
+            action: "SEND_TO_Vantage", // routes to Brain orchestrator by default in background.js
+            payload: {
+                event_type: "free_chat",
+                query: message,
+                context: document.body.innerText.substring(0, 15000)
+            }
+        }, (result) => {
+            if (chrome.runtime.lastError) {
+                resolve("Critical Error: Extension context invalidated.");
+            } else if (result && result.response) {
+                resolve(result.response);
+            } else {
+                resolve(result ? JSON.stringify(result) : "No response details.");
+            }
         });
-        const result = await res.json();
-        return result.response || "No response details.";
-    } catch (e) {
-        return "Critical Error: Could not reach FIOS Brain. Check Coolify Logs.";
-    }
+    });
 }
 
 function injectReply(text) {
-    const box = document.querySelector('[data-test="message-compose-input"]');
-    if (box) box.innerText = text;
+    const box = document.querySelector('[data-test="message-compose-input"], #message-compose-input, textarea.message-compose-input');
+    if (box) {
+        box.focus();
+        if (box.tagName === "TEXTAREA" || box.tagName === "INPUT") {
+             const nativeInputValueSetter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, "value").set;
+             if (nativeInputValueSetter) {
+                 nativeInputValueSetter.call(box, text);
+             } else {
+                 box.value = text;
+             }
+        } else {
+            box.innerText = text;
+        }
+        // Dispatch React-friendly tracking events
+        box.dispatchEvent(new Event("input", { bubbles: true, cancelable: true }));
+        box.dispatchEvent(new Event("change", { bubbles: true, cancelable: true }));
+        
+        box.style.height = 'auto';
+        box.style.height = box.scrollHeight + 'px';
+    }
 }
 
 function injectProposalIntoUpwork(proposalText) {
     const textarea = document.querySelector('textarea, [contenteditable="true"]');
     if (!textarea) return;
     textarea.focus();
-    if (textarea.tagName === "TEXTAREA") textarea.value = proposalText;
-    else textarea.innerText = proposalText;
-    textarea.dispatchEvent(new Event("input", { bubbles: true }));
+    if (textarea.tagName === "TEXTAREA" || textarea.tagName === "INPUT") {
+         const nativeInputValueSetter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, "value").set;
+         if (nativeInputValueSetter) {
+             nativeInputValueSetter.call(textarea, proposalText);
+         } else {
+             textarea.value = proposalText;
+         }
+    } else {
+         textarea.innerText = proposalText;
+    }
+    textarea.dispatchEvent(new Event("input", { bubbles: true, cancelable: true }));
+    textarea.dispatchEvent(new Event("change", { bubbles: true, cancelable: true }));
+    
+    textarea.style.height = 'auto';
+    textarea.style.height = textarea.scrollHeight + 'px';
 }
 
 function autoInitializeFIOS() {

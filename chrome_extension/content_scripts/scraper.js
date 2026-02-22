@@ -2,7 +2,7 @@
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === "EXTRACT_PAGE_DATA") {
-    console.log("Vantage: Received extraction request.");
+    console.log("Upie: Received extraction request.");
     const pageUrl = window.location.href;
     let extractedData = null;
     let dataType = "unknown";
@@ -22,6 +22,13 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     } else if (pageUrl.includes("/freelancers/~") || pageUrl.includes("/profile/")) {
       extractedData = extractFreelancerProfile();
       dataType = "profile_sync";
+    } else if (pageUrl.includes("/contracts/")) {
+      extractedData = {
+        title: document.title || "Contract Page",
+        raw_text: document.body.innerText.substring(0, 20000),
+        raw_html: document.body.outerHTML.substring(0, 500000)
+      };
+      dataType = "dom_snapshot";
     } else if (pageUrl.includes("/apply") || pageUrl.includes("/submit")) {
       extractedData = extractProposalSubmission();
       dataType = "proposal_submission";
@@ -35,7 +42,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
     if (extractedData) {
       chrome.runtime.sendMessage({
-        action: "SEND_TO_Vantage",
+        action: "SEND_TO_Upie",
         payload: { type: dataType, data: extractedData, url: pageUrl, timestamp: new Date().toISOString() }
       }, (response) => {
         if (response && response.success) {
@@ -49,7 +56,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   }
 
   if (request.action === "SCRAPE_FOR_SHADOW_MERGE") {
-    console.log("Vantage: Shadow Scrape Triggered on this tab.");
+    console.log("Upie: Shadow Scrape Triggered on this tab.");
     try {
       const jobData = extractJobDetails();
       sendResponse({ 
@@ -78,6 +85,48 @@ let lastStealthUrl = "";
 
 const PROPOSAL_URL_REGEX = /upwork\.com\/nx\/proposals\/(?:archived\/|active\/)?(\d+)/;
 const MESSAGES_URL_REGEX = /upwork\.com\/(?:ab\/)?messages\//;
+const DOM_SNAPSHOT_COOLDOWN_MS = 15000;
+const MAX_DOM_HTML_CHARS = 2000000; // Keep payload bounded for extension messaging.
+let lastDomSnapshotAt = 0;
+let domSnapshotTimer = null;
+
+function classifyPageType(url) {
+  const u = (url || "").toLowerCase();
+  if (u.includes("/messages/")) return "conversation";
+  if (u.includes("/jobs/") || u.includes("/freelance-jobs/") || u.includes("/job-details")) return "job";
+  if (u.includes("/proposals/")) return "proposal";
+  if (u.includes("/profile/") || u.includes("/freelancers/~")) return "profile";
+  if (u.includes("/contracts/")) return "contract";
+  if (u.includes("/search/jobs")) return "job_search";
+  return "generic";
+}
+
+function sendDomSnapshot(trigger = "navigation") {
+  const now = Date.now();
+  if ((now - lastDomSnapshotAt) < DOM_SNAPSHOT_COOLDOWN_MS) return;
+  lastDomSnapshotAt = now;
+
+  const rawHtml = (document.body && document.body.outerHTML) ? document.body.outerHTML : "";
+  const payload = {
+    type: "dom_snapshot",
+    data: {
+      html: rawHtml.length > MAX_DOM_HTML_CHARS ? rawHtml.slice(0, MAX_DOM_HTML_CHARS) : rawHtml,
+      page_text: (document.body && document.body.innerText) ? document.body.innerText.slice(0, 180000) : "",
+      page_type: classifyPageType(window.location.href),
+      title: document.title || "",
+      trigger
+    },
+    url: window.location.href,
+    timestamp: new Date().toISOString()
+  };
+
+  safeSendMessage({ action: "SEND_TO_Upie", payload }, () => {});
+}
+
+function scheduleDomSnapshot(trigger = "mutation") {
+  if (domSnapshotTimer) clearTimeout(domSnapshotTimer);
+  domSnapshotTimer = setTimeout(() => sendDomSnapshot(trigger), 1000);
+}
 
 function checkStealthTrigger() {
   const currentUrl = window.location.href;
@@ -86,6 +135,7 @@ function checkStealthTrigger() {
   
   if (canonicalUrl !== lastStealthUrl) {
     lastStealthUrl = canonicalUrl;
+    sendDomSnapshot("route_change");
 
     // Ignore image viewer modals or generic overlays
     if (currentUrl.includes("ImageViewerModal") || currentUrl.includes("_modalInfo")) {
@@ -99,13 +149,13 @@ function checkStealthTrigger() {
     
     // 1. Check for Proposal Pages
     if (PROPOSAL_URL_REGEX.test(canonicalUrl)) {
-      console.log("Vantage Stealth: Detected Proposal Change.");
+      console.log("Upie Stealth: Detected Proposal Change.");
       setTimeout(stealthFetchJobDetails, 3500); 
     }
     
     // 2. Check for Message Threads
     if (MESSAGES_URL_REGEX.test(canonicalUrl)) {
-      console.log("Vantage Stealth: Detected Message Thread Change.");
+      console.log("Upie Stealth: Detected Message Thread Change.");
       const roomId = getRoomId();
       if (roomId) handleRoomChange(roomId);
     }
@@ -117,13 +167,13 @@ function safeSendMessage(message, callback) {
   if (chrome.runtime && chrome.runtime.id) {
     chrome.runtime.sendMessage(message, (response) => {
       if (chrome.runtime.lastError) {
-        console.warn("Vantage: Runtime error (context likely invalidated):", chrome.runtime.lastError.message);
+        console.warn("Upie: Runtime error (context likely invalidated):", chrome.runtime.lastError.message);
       } else if (callback) {
         callback(response);
       }
     });
   } else {
-    console.warn("Vantage: Extension context invalidated. Stopping operations.");
+    console.warn("Upie: Extension context invalidated. Stopping operations.");
     return false;
   }
   return true;
@@ -140,38 +190,38 @@ let autoSyncInterval = null;
 let autoSyncEnabled = false;
 
 // Load persisted auto-sync setting
-chrome.storage.local.get(['vantageAutoSync'], (res) => {
-  autoSyncEnabled = !!res.vantageAutoSync;
+chrome.storage.local.get(['upieAutoSync'], (res) => {
+  autoSyncEnabled = !!res.upieAutoSync;
   if (autoSyncEnabled) startAutoSyncLoop();
 });
 
 chrome.storage.onChanged.addListener((changes) => {
-  if (changes.vantageAutoSync) {
-    autoSyncEnabled = changes.vantageAutoSync.newValue;
+  if (changes.upieAutoSync) {
+    autoSyncEnabled = changes.upieAutoSync.newValue;
     if (autoSyncEnabled) startAutoSyncLoop();
     else stopAutoSyncLoop();
   }
 });
 
 // Listen for Floating UI Events
-window.addEventListener('Vantage_START_CAPTURE', () => {
-  console.log("Vantage: Passive Capture Started.");
+window.addEventListener('Upie_START_CAPTURE', () => {
+  console.log("Upie: Passive Capture Started.");
   captureActive = true;
   startBuffering();
 });
 
-window.addEventListener('Vantage_STOP_CAPTURE', () => {
-  console.log("Vantage: Passive Capture Stopped.");
+window.addEventListener('Upie_STOP_CAPTURE', () => {
+  console.log("Upie: Passive Capture Stopped.");
   captureActive = false;
 });
 
-window.addEventListener('Vantage_FLUSH_DATA', () => {
-  console.log("Vantage: Flushing Buffered Data...");
+window.addEventListener('Upie_FLUSH_DATA', () => {
+  console.log("Upie: Flushing Buffered Data...");
   flushBuffer();
 });
 
-window.addEventListener('Vantage_CLEAR_BUFFER', () => {
-  console.log("Vantage: Buffer Cleared.");
+window.addEventListener('Upie_CLEAR_BUFFER', () => {
+  console.log("Upie: Buffer Cleared.");
   messageBuffer.clear();
   updateUICount();
 });
@@ -204,7 +254,8 @@ function findScrollContainer() {
 }
 
 function captureVisibleMessages() {
-  const currentMessages = extractConversation();
+  const convo = extractConversation();
+  const currentMessages = Array.isArray(convo) ? convo : (convo.messages || []);
   let added = false;
   currentMessages.forEach(msg => {
     const key = msg.message_id || `${msg.sender}:${msg.text.substring(0, 100)}:${msg.time}`;
@@ -215,14 +266,14 @@ function captureVisibleMessages() {
   });
   if (added) {
     updateUICount();
-    window.dispatchEvent(new CustomEvent('Vantage_BUFFER_UPDATE', { 
+    window.dispatchEvent(new CustomEvent('Upie_BUFFER_UPDATE', { 
       detail: { messages: Array.from(messageBuffer.values()) } 
     }));
   }
 }
 
 function updateUICount() {
-  window.dispatchEvent(new CustomEvent('Vantage_COUNT_UPDATE', { 
+  window.dispatchEvent(new CustomEvent('Upie_COUNT_UPDATE', { 
     detail: { count: messageBuffer.size } 
   }));
 }
@@ -250,17 +301,18 @@ function syncMessages(messages, status = 'partially_synced') {
           thread_name: threadName,
           room_id: roomId,
           messages: messages,
+          client_sidebar: extractClientSidebar(),
           sync_status: status
         },
         url: window.location.href,
         timestamp: new Date().toISOString()
     };
 
-    safeSendMessage({ action: 'SEND_TO_Vantage', payload: payload }, (response) => {
+    safeSendMessage({ action: 'SEND_TO_Upie', payload: payload }, (response) => {
         if (response && response.success) {
-            console.log("Vantage: Sync Successful.");
+            console.log("Upie: Sync Successful.");
             if (!isSyncing) {
-                window.dispatchEvent(new CustomEvent('Vantage_SYNC_COMPLETE'));
+                window.dispatchEvent(new CustomEvent('Upie_SYNC_COMPLETE'));
                 showToast(`✅ Synced ${messages.length} messages`);
             }
         } else {
@@ -278,7 +330,7 @@ function handleRoomChange(roomId) {
   if (roomId === lastRoomId) return;
   lastRoomId = roomId;
 
-  console.log(`Vantage: Room Change Detected -> ${roomId}`);
+  console.log(`Upie: Room Change Detected -> ${roomId}`);
   messageBuffer.clear();
   updateUICount();
 
@@ -309,10 +361,10 @@ function handleRoomChange(roomId) {
       eventDetail.error = true;
     }
 
-    window.dispatchEvent(new CustomEvent('Vantage_THREAD_INFO', { detail: eventDetail }));
+    window.dispatchEvent(new CustomEvent('Upie_THREAD_INFO', { detail: eventDetail }));
 
     if (response && response.exists) {
-      console.log(`Vantage: Thread ${roomId} already in DB. Status: ${response.syncStatus}`);
+      console.log(`Upie: Thread ${roomId} already in DB. Status: ${response.syncStatus}`);
     }
   });
 }
@@ -320,7 +372,7 @@ function handleRoomChange(roomId) {
 function extractConversation() {
   let messages = [];
   const messageNodes = document.querySelectorAll('.up-d-story, .up-d-story-item, [data-test="message-item"], .up-chat-message, .message-item, article, [role="listitem"]');
-  console.log(`Vantage: Analyzing ${messageNodes.length} nodes for messages.`);
+  console.log(`Upie: Analyzing ${messageNodes.length} nodes for messages.`);
 
 messageNodes.forEach(msg => {
     const fullText = msg.innerText;
@@ -382,9 +434,9 @@ messageNodes.forEach(msg => {
     }
   });
 
-  console.log(`Vantage: Captured ${uniqueMessages.length} unique messages.`);
+  console.log(`Upie: Captured ${uniqueMessages.length} unique messages.`);
   if (uniqueMessages.length > 0) {
-    console.log("Vantage: Data Preview (Latest 3):", uniqueMessages.slice(-3));
+    console.log("Upie: Data Preview (Latest 3):", uniqueMessages.slice(-3));
   }
 
   return {
@@ -536,29 +588,39 @@ function showToast(message, type = "info") {
   setTimeout(() => toast.remove(), 4000);
 }
 
-console.log("Vantage: Scraper Content Script Injected on " + window.location.href);
+console.log("Upie: Scraper Content Script Injected on " + window.location.href);
+sendDomSnapshot("initial_load");
 
-window.addEventListener('Vantage_SYNC_FULL', async () => {
-    console.log("Vantage: Starting Full History Sync...");
+// Keep collecting structural changes for HTML-drift immunity.
+const semanticDomObserver = new MutationObserver((mutations) => {
+  const relevant = mutations.some((m) => m.addedNodes && m.addedNodes.length > 0);
+  if (relevant) {
+    scheduleDomSnapshot("mutation_observer");
+  }
+});
+semanticDomObserver.observe(document.body, { childList: true, subtree: true });
+
+window.addEventListener('Upie_SYNC_FULL', async () => {
+    console.log("Upie: Starting Full History Sync...");
     isSyncing = true;
     stopSyncRequested = false;
     await performFullSync();
 });
 
-window.addEventListener('Vantage_SYNC_NEW', () => {
-    console.log("Vantage: Starting New Message Sync...");
+window.addEventListener('Upie_SYNC_NEW', () => {
+    console.log("Upie: Starting New Message Sync...");
     const data = extractConversation();
     syncMessages(data.messages, 'partially_synced');
 });
 
-window.addEventListener('Vantage_STOP_SYNC', () => {
-    console.log("Vantage: Stopping Sync...");
+window.addEventListener('Upie_STOP_SYNC', () => {
+    console.log("Upie: Stopping Sync...");
     stopSyncRequested = true;
     isSyncing = false;
 });
 
-window.addEventListener('Vantage_REFRESH_SUMMARY', () => {
-    console.log("Vantage: Refreshing Summary...");
+window.addEventListener('Upie_REFRESH_SUMMARY', () => {
+    console.log("Upie: Refreshing Summary...");
     // Just sync latest to trigger summary re-gen on backend
     const data = extractConversation();
     syncMessages(data.messages.slice(-5), 'partially_synced');
@@ -599,12 +661,12 @@ async function performFullSync() {
     }
     
     isSyncing = false;
-    window.dispatchEvent(new CustomEvent('Vantage_SYNC_COMPLETE'));
+    window.dispatchEvent(new CustomEvent('Upie_SYNC_COMPLETE'));
 }
 
 function startAutoSyncLoop() {
   if (autoSyncInterval) return;
-  console.log("Vantage: Starting Auto-Sync Loop...");
+  console.log("Upie: Starting Auto-Sync Loop...");
   autoSyncInterval = setInterval(() => {
     if (captureActive || isSyncing) return;
     const data = extractConversation();
@@ -618,7 +680,7 @@ function stopAutoSyncLoop() {
   if (autoSyncInterval) {
     clearInterval(autoSyncInterval);
     autoSyncInterval = null;
-    console.log("Vantage: Auto-Sync Loop Stopped.");
+    console.log("Upie: Auto-Sync Loop Stopped.");
   }
 }
 
@@ -629,22 +691,20 @@ function stopAutoSyncLoop() {
 setInterval(checkStealthTrigger, 1200);
 
 window.addEventListener('focus', () => {
-  // Reset lastStealthUrl on focus to ensure we check the current state
-  lastStealthUrl = ""; 
   checkStealthTrigger(); 
 });
 
 
 // Heartbeat to confirm injection - silenced
 setInterval(() => {
-  // console.log("Vantage: Scraper Heartbeat - Active on " + window.location.href);
+  // console.log("Upie: Scraper Heartbeat - Active on " + window.location.href);
 }, 60000); 
 
 
 async function stealthFetchJobDetails() {
   try {
     // 1. Find the link to the original Job Posting
-    showToast("🔍 Vantage: Searching for Job Link...");
+    showToast("🔍 Upie: Searching for Job Link...");
     let jobHref = null;
     const allLinks = document.querySelectorAll('a');
     
@@ -653,7 +713,7 @@ async function stealthFetchJobDetails() {
       const t = el.innerText.toLowerCase().trim();
       if (t === "view job posting" || t === "view job" || t === "job details" || t === "original job posting" || t.includes("view job posting")) {
         jobHref = el.href;
-        console.log("Vantage Stealth: Found link by text match:", t, "->", jobHref);
+        console.log("Upie Stealth: Found link by text match:", t, "->", jobHref);
         break;
       }
     }
@@ -663,7 +723,7 @@ async function stealthFetchJobDetails() {
       for (let el of allLinks) {
         if ((el.href.includes("/jobs/~") || el.href.includes("/freelance-jobs/")) && !el.href.includes("/proposals")) {
           jobHref = el.href;
-          console.log("Vantage Stealth: Found link by URL pattern:", jobHref);
+          console.log("Upie Stealth: Found link by URL pattern:", jobHref);
           break;
         }
       }
@@ -673,11 +733,11 @@ async function stealthFetchJobDetails() {
     const proposalData = extractSingleProposal();
     
     if (!jobHref) {
-      console.log("Vantage Stealth: No Job Link found on this proposal page. Sending isolated proposal data.");
-      showToast("⚠️ Vantage: Job Link not found. Saving Proposal only.", "info");
+      console.log("Upie Stealth: No Job Link found on this proposal page. Sending isolated proposal data.");
+      showToast("⚠️ Upie: Job Link not found. Saving Proposal only.", "info");
       // Fallback: Send just the proposal if we can't find the job description link
       chrome.runtime.sendMessage({
-        action: "SEND_TO_Vantage",
+        action: "SEND_TO_Upie",
         payload: {
           type: "proposals",
           data: proposalData,
@@ -689,8 +749,8 @@ async function stealthFetchJobDetails() {
     }
     
     // 2. Perform Human-Like "Shadow Tab" Extraction
-    showToast("👤 Vantage: Simulating human click (Shadow Tab)...");
-    console.log("Vantage Stealth: Handing off to background for Shadow Ingest:", jobHref);
+    showToast("👤 Upie: Simulating human click (Shadow Tab)...");
+    console.log("Upie Stealth: Handing off to background for Shadow Ingest:", jobHref);
     
     chrome.runtime.sendMessage({
       action: "PERFORM_SHADOW_INGEST",
@@ -700,23 +760,23 @@ async function stealthFetchJobDetails() {
       }
     }, (res) => {
       if (res && res.success) {
-        console.log("✅ Vantage Stealth: Shadow Ingest Successful!");
-        showToast("✅ Vantage: Human-like ingestion successful!");
+        console.log("✅ Upie Stealth: Shadow Ingest Successful!");
+        showToast("✅ Upie: Human-like ingestion successful!");
       } else {
-        console.error("❌ Vantage Stealth: Shadow Ingest Failed:", res);
-        showToast("❌ Vantage: Stealth fetch blocked by firewall.", "error");
+        console.error("❌ Upie Stealth: Shadow Ingest Failed:", res);
+        showToast("❌ Upie: Stealth fetch blocked by firewall.", "error");
       }
     });
       } catch(e) {
-    console.error("Vantage Stealth Automation Failed:", e);
-    showToast("❌ Vantage Critical Error: " + e.message, "error");
+    console.error("Upie Stealth Automation Failed:", e);
+    showToast("❌ Upie Critical Error: " + e.message, "error");
   }
 }
 
 // --- Bulk Sync Automation ---
 
 async function bulkSyncArchivedProposals() {
-    console.log("Vantage: Starting Bulk Archived Sync...");
+    console.log("Upie: Starting Bulk Archived Sync...");
     const links = Array.from(document.querySelectorAll('a[href*="/nx/proposals/"]'))
         .filter(a => /\d+/.test(a.href) && !a.href.includes('/proposals/archive/') && !a.href.includes('/job-details/'))
         .map(a => a.href);
@@ -733,7 +793,7 @@ async function bulkSyncArchivedProposals() {
     
     for (let i = 0; i < uniqueLinks.length; i++) {
         const url = uniqueLinks[i];
-        console.log(`Vantage Bulk: [${i+1}/${uniqueLinks.length}] Ingesting: ${url}`);
+        console.log(`Upie Bulk: [${i+1}/${uniqueLinks.length}] Ingesting: ${url}`);
         
         // Use background to open shadow tab and scrape
         await new Promise((resolve) => {
@@ -761,7 +821,7 @@ async function bulkSyncArchivedProposals() {
 }
 
 async function bulkSyncConversations() {
-    console.log("Vantage: Starting Bulk Conversation Sync...");
+    console.log("Upie: Starting Bulk Conversation Sync...");
     
     // Find all room links in the sidebar
     const roomLinks = Array.from(document.querySelectorAll('a[href*="/messages/rooms/"]'));
@@ -781,7 +841,7 @@ async function bulkSyncConversations() {
         const roomId = uniqueRoomIds[i];
         const roomUrl = `https://www.upwork.com/messages/rooms/${roomId}`;
         
-        console.log(`Vantage Bulk Convo: [${i+1}/${uniqueRoomIds.length}] Opening room: ${roomId}`);
+        console.log(`Upie Bulk Convo: [${i+1}/${uniqueRoomIds.length}] Opening room: ${roomId}`);
         
         // Navigation - we use location.href for simplicity in the same tab
         window.location.href = roomUrl;
@@ -793,8 +853,8 @@ async function bulkSyncConversations() {
         // We need a way to persist the 'bulk state'.
         // Better: Use storage to keep track of remaining rooms and trigger sync on load.
         chrome.storage.local.set({ 
-            vantage_bulk_convo_queue: uniqueRoomIds.slice(i + 1),
-            vantage_bulk_convo_active: true
+            upie_bulk_convo_queue: uniqueRoomIds.slice(i + 1),
+            upie_bulk_convo_active: true
         });
         
         // Trigger the full sync for THIS room
@@ -807,33 +867,33 @@ async function bulkSyncConversations() {
 }
 
 // Logic to continue bulk sync after navigation
-chrome.storage.local.get(['vantage_bulk_convo_queue', 'vantage_bulk_convo_active'], async (res) => {
-    if (res.vantage_bulk_convo_active && res.vantage_bulk_convo_queue && res.vantage_bulk_convo_queue.length > 0) {
-        console.log(`Vantage Bulk: Continuing sync. ${res.vantage_bulk_convo_queue.length} rooms remaining.`);
+chrome.storage.local.get(['upie_bulk_convo_queue', 'upie_bulk_convo_active'], async (res) => {
+    if (res.upie_bulk_convo_active && res.upie_bulk_convo_queue && res.upie_bulk_convo_queue.length > 0) {
+        console.log(`Upie Bulk: Continuing sync. ${res.upie_bulk_convo_queue.length} rooms remaining.`);
         
         // First, sync current room
         await new Promise(r => setTimeout(r, 3000)); // Wait for render
         await performFullSync();
         
         // Move to next
-        const nextRooms = res.vantage_bulk_convo_queue;
+        const nextRooms = res.upie_bulk_convo_queue;
         const currentRoomId = nextRooms.shift();
         
         if (currentRoomId) {
-            chrome.storage.local.set({ vantage_bulk_convo_queue: nextRooms });
+            chrome.storage.local.set({ upie_bulk_convo_queue: nextRooms });
             window.location.href = `https://www.upwork.com/messages/rooms/${currentRoomId}`;
         } else {
-            chrome.storage.local.set({ vantage_bulk_convo_active: false });
+            chrome.storage.local.set({ upie_bulk_convo_active: false });
             showToast("✅ All Conversations Synced!", "success");
         }
-    } else if (res.vantage_bulk_convo_active) {
-        chrome.storage.local.set({ vantage_bulk_convo_active: false });
+    } else if (res.upie_bulk_convo_active) {
+        chrome.storage.local.set({ upie_bulk_convo_active: false });
         showToast("✅ All Conversations Synced!", "success");
     }
 });
 
-window.addEventListener('Vantage_BULK_SYNC_CONVOS', bulkSyncConversations);
-window.addEventListener('Vantage_BULK_SYNC_ARCHIVE', bulkSyncArchivedProposals);
+window.addEventListener('Upie_BULK_SYNC_CONVOS', bulkSyncConversations);
+window.addEventListener('Upie_BULK_SYNC_ARCHIVE', bulkSyncArchivedProposals);
 
 // --- Extraction Logic ---
 
@@ -905,18 +965,21 @@ function extractSingleProposal() {
   const locationMatch = pageText.match(/(Canada|United States|United Kingdom|Australia|India|Pakistan|Bangladesh|Germany|France)/i); // Common locations
   if (locationMatch) clientInfo.location = locationMatch[0];
   
+  const coverText = coverLetterEl ? coverLetterEl.innerText.trim() : "";
+  
   return [{
     title: titleEl ? titleEl.innerText.trim() : (pageText.match(/Job details\n(.*)/)?.[1] || "Unknown Title"),
     status: statusEl ? statusEl.innerText.trim() : "Active",
-    cover_letter: coverLetterEl ? coverLetterEl.innerText.trim() : "",
+    proposal_text: coverText,
+    cover_letter: coverText, // Keep both for backward/forward compatibility
     bid_amount: bidEl ? bidEl.innerText.trim() : "",
     hiring_activity: hiringActivity,
     client_info: clientInfo,
-    raw_text: pageText.substring(0, 15000) 
+    raw_text: coverText ? "" : pageText.substring(0, 5000) // Only send full text as fallback
   }];
 }
 
-// ── Strict Manual Extraction for Vantage Manual Collector ───────────────────
+// ── Strict Manual Extraction for Upie Manual Collector ───────────────────
 window.extractManualProposal = function() {
     let title = document.title.replace(' - Upwork', '').replace('Proposal: ', '').trim();
     const h1 = document.querySelector('h1');
@@ -980,19 +1043,21 @@ function extractJobDetails() {
     description: descEl ? descEl.innerText.trim() : "Unknown Description",
     budget: budgetEl ? budgetEl.innerText.trim() : "Unknown Budget",
     skills: skills,
-    raw_text: document.body.innerText.substring(0, 30000) // First 30k chars to ensure we capture Client History/Activity 
+    raw_text: document.body.innerText.substring(0, 30000), // First 30k chars to ensure we capture Client History/Activity
+    raw_html: document.body.outerHTML.substring(0, 500000)
   };
 }
 
 // ============================================================================
 
 // ============================================================================
-// Vantage ON-DEMAND CONTEXT PROVIDER (HYBRID AI ASSIST)
+// Upie ON-DEMAND CONTEXT PROVIDER (HYBRID AI ASSIST)
 // ============================================================================
 
+/*
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === "EXTRACT_PAGE_CONTENT") {
-    console.log("Vantage: Received EXTRACT_PAGE_CONTENT from Popup");
+    console.log("Upie: Received EXTRACT_PAGE_CONTENT from Popup");
     try {
       if (location.href.includes('/messages/')) {
          sendResponse(window.extractConversation());
@@ -1004,12 +1069,13 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
          sendResponse({ raw_text: document.body.innerText.substring(0, 15000) });
       }
     } catch(e) {
-      console.error("Vantage Context Extract Err:", e);
+      console.error("Upie Context Extract Err:", e);
       sendResponse({ status: "error", message: e.message });
     }
     return true; // Keep channel open for async if needed
   }
 });
+*/
 
 function extractFreelancerProfile() {
   const nameEl = document.querySelector('.up-name-wrapper h2, h1');
@@ -1027,7 +1093,8 @@ function extractFreelancerProfile() {
     overview: overviewEl ? overviewEl.innerText.trim() : "",
     hourly_rate: rateEl ? parseFloat(rateEl.innerText.replace(/[^0-9.]/g, '')) : 0,
     skills: skills,
-    raw_text: document.body.innerText.substring(0, 15000)
+    raw_text: document.body.innerText.substring(0, 15000),
+    raw_html: document.body.outerHTML.substring(0, 500000)
   };
 }
 
@@ -1041,11 +1108,12 @@ function extractProposalSubmission() {
     job_title: jobTitleEl ? jobTitleEl.innerText.trim() : "Unknown Job",
     cover_letter: coverLetterEl ? coverLetterEl.value : "",
     bid_amount: bidEl ? parseFloat(bidEl.value) : 0,
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
+    raw_text: document.body.innerText.substring(0, 20000),
+    raw_html: document.body.outerHTML.substring(0, 500000)
   };
 }
 
 // Expose to window for UI buttons
 window.extractFreelancerProfile = extractFreelancerProfile;
 window.extractProposalSubmission = extractProposalSubmission;
-

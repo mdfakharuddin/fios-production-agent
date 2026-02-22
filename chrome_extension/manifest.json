@@ -1,8 +1,13 @@
 {
   "manifest_version": 3,
-  "name": "Vantage Intelligence",
-  "version": "2.0",
-  "description": "Strategic AI Advisor for Upwork — Decision Intelligence, Proposal Generation, Conversation Analysis.",
+  "name": "Upie Intelligence",
+  "version": "2.1",
+  "description": "Upie — Strategic AI Advisor for Upwork Decision Intelligence.",
+  "icons": {
+    "16": "icons/icon_16.png",
+    "48": "icons/icon_48.png",
+    "128": "icons/icon_128.png"
+  },
   "permissions": [
     "activeTab",
     "scripting",
@@ -13,25 +18,36 @@
   ],
   "host_permissions": [
     "https://*.upwork.com/*",
-    "http://127.0.0.1:8000/*",
-    "http://127.0.0.1:5001/*"
+    "https://api.themenuagency.com/fios/*"
   ],
   "background": {
     "service_worker": "background.js"
   },
   "action": {
-    "default_popup": "popup/popup.html"
+    "default_popup": "popup/popup.html",
+    "default_icon": {
+      "16": "icons/icon_16.png",
+      "48": "icons/icon_48.png",
+      "128": "icons/icon_128.png"
+    }
   },
   "content_scripts": [
     {
       "matches": ["https://*.upwork.com/*"],
-      "js": ["fios_api.js", "floating_ui.js"],
+      "js": [
+        "content_scripts/scraper.js",
+        "content_scripts/upie_scraper.js",
+        "content_scripts/floating_ui.js"
+      ],
       "run_at": "document_idle"
     }
   ],
   "web_accessible_resources": [
     {
-      "resources": ["content_scripts/floating_ui.css"],
+      "resources": [
+        "content_scripts/floating_ui.css",
+        "icons/*.png"
+      ],
       "matches": ["https://*.upwork.com/*"]
     }
   ]

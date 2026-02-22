@@ -18,17 +18,24 @@ async def get_profile():
 async def handle_reply(request):
     """Strategic reply generation."""
     conversation = await get_conversation(request.room_id)
-    if not conversation:
-        return {"error": "Conversation not found"}
+    
+    if conversation:
+        summary = conversation.summary or "No summary available"
+        messages = conversation.messages_json
+        latest_message = messages[-1] if messages else {}
+    elif request.data and request.data.get("type") == "conversation":
+        # Fallback to request data if not in DB
+        convo_payload = request.data.get("payload", {})
+        messages = convo_payload.get("messages", [])
+        latest_message = messages[-1] if messages else {}
+        summary = f"Unsynced conversation with {convo_payload.get('client_name', 'Client')}"
+    else:
+        return {"status": "error", "message": "Conversation context missing. Please sync the room or wait for extraction."}
 
-    summary = conversation.summary or "No summary available"
     similar = await retrieval.search_similar_conversations(summary, top_k=3)
     pricing = await pricing_engine.get_patterns("general")
     profile = await get_profile()
     
-    messages = conversation.messages_json
-    latest_message = messages[-1] if messages else {}
-
     context = {
         "profile": profile,
         "summary": summary,
@@ -45,12 +52,19 @@ async def handle_reply(request):
 async def handle_quick_reply(request):
     """Quick reply generation."""
     conversation = await get_conversation(request.room_id)
-    if not conversation:
-        return {"error": "Conversation not found"}
-
-    summary = conversation.summary or "No summary available"
-    messages = conversation.messages_json or []
-    latest_message = messages[-1] if messages else {}
+    
+    if conversation:
+        summary = conversation.summary or "No summary available"
+        messages = conversation.messages_json or []
+        latest_message = messages[-1] if messages else {}
+    elif request.data and request.data.get("type") == "conversation":
+        # Fallback to request data if not in DB
+        convo_payload = request.data.get("payload", {})
+        messages = convo_payload.get("messages", [])
+        latest_message = messages[-1] if messages else {}
+        summary = f"Unsynced conversation with {convo_payload.get('client_name', 'Client')}"
+    else:
+        return {"status": "error", "message": "Conversation context missing."}
     
     context = {"summary": summary, "latest_message": latest_message, "action": "Generate quick reply"}
 

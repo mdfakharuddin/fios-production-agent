@@ -1,7 +1,20 @@
+import os
+import sys
+# Allow imports with 'FIOS.' prefix when run from within the FIOS directory
+current_dir = os.path.dirname(os.path.abspath(__file__))
+if os.path.basename(current_dir) == "FIOS":
+    parent_dir = os.path.dirname(current_dir)
+    if parent_dir not in sys.path:
+        sys.path.insert(0, parent_dir)
+else:
+    if current_dir not in sys.path:
+        sys.path.insert(0, current_dir)
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from contextlib import asynccontextmanager
+import re
 
 from FIOS.core.config import settings
 
@@ -134,6 +147,35 @@ async def perform_job_research(body: dict):
 async def health_check():
     return {"status": "ok", "service": settings.PROJECT_NAME}
 
+
+@app.post("/api/chat")
+async def legacy_chat(body: dict):
+    """
+    Backward-compatible chat endpoint used by older extension scripts.
+    Maps to the unified brain router.
+    """
+    req = BrainRequest(
+        event_type="free_chat",
+        room_id=body.get("conversation_id"),
+        query=body.get("message", ""),
+        context=body.get("context"),
+        data=body.get("metadata"),
+    )
+    return await agent_router.route(req)
+
+
+@app.post("/api/job/analyze")
+async def legacy_job_analyze(body: dict):
+    """
+    Backward-compatible job analysis endpoint.
+    """
+    req = BrainRequest(
+        event_type="job_analysis",
+        job_context=body.get("job_data") or {},
+        query=(body.get("job_data") or {}).get("description", ""),
+    )
+    return await agent_router.route(req)
+
 from FIOS.orchestrator.pipelines import pipeline
 
 @app.post("/api/v1/ingest")
@@ -177,7 +219,9 @@ async def manual_ingest_conversation(payload: dict):
         # Wrap the normalized payload into the format expected by process_raw_input
         wrapped_payload = {
             "type": "conversation",
-            "data": payload
+            "data": payload,
+            "url": payload.get("conversation_link") or payload.get("url") or "manual://conversation",
+            "timestamp": payload.get("timestamp") or __import__("datetime").datetime.utcnow().isoformat() + "Z",
         }
         record_ids = await pipeline.process_raw_input("conversation", wrapped_payload)
         return {"status": "success", "message": "Conversation saved successfully.", "records": len(record_ids)}
@@ -192,7 +236,9 @@ async def manual_ingest_proposal(payload: dict):
     try:
         wrapped_payload = {
             "type": "proposals",
-            "data": [payload] # pipeline.process_raw_input expects list for proposals typically
+            "data": [payload], # pipeline.process_raw_input expects list for proposals typically
+            "url": payload.get("proposal_link") or payload.get("url") or "manual://proposal",
+            "timestamp": payload.get("timestamp") or __import__("datetime").datetime.utcnow().isoformat() + "Z",
         }
         record_ids = await pipeline.process_raw_input("proposals", wrapped_payload)
         return {"status": "success", "message": "Proposal saved successfully.", "records": len(record_ids)}
@@ -248,6 +294,132 @@ async def check_proposal_sync(proposal_id: str):
             return {"status": "synced"}
             
         return {"status": "not_found"}
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return {"status": "error", "message": str(e)}
+
+
+def _money_to_float(value) -> float:
+    if value is None:
+        return 0.0
+    if isinstance(value, (int, float)):
+        return float(value)
+    s = str(value).replace(",", "").strip()
+    m = re.search(r"(\d+(?:\.\d+)?)\s*([kKmM]?)", s)
+    if not m:
+        return 0.0
+    num = float(m.group(1))
+    unit = m.group(2).lower()
+    if unit == "k":
+        num *= 1000
+    elif unit == "m":
+        num *= 1_000_000
+    return num
+
+
+@app.post("/api/v1/opportunities/ingest")
+async def opportunities_ingest(body: dict):
+    """
+    Store and rank scanned opportunities from the extension.
+    Input: { jobs: [{title, description, budget, client_spend, client_hire_rate}] }
+    """
+    from FIOS.analytics.focus_engine import score_opportunity
+    from FIOS.database.connection import async_session_maker
+    from FIOS.database.models.jobs import Job
+
+    jobs = body if isinstance(body, list) else body.get("jobs", [])
+    if not jobs:
+        return {"status": "error", "message": "jobs required"}
+
+    ranked = []
+    try:
+        async with async_session_maker() as session:
+            for job in jobs[:200]:
+                title = (job.get("title") or "Untitled Job").strip()
+                description = (job.get("description") or "").strip()
+                budget = _money_to_float(job.get("budget") or job.get("client_spend") or 0)
+                client_hire_rate = _money_to_float(job.get("client_hire_rate") or job.get("hire_rate") or 0)
+                client_score = max(0.0, min(10.0, client_hire_rate / 10)) if client_hire_rate else None
+
+                score = await score_opportunity(
+                    job_title=title,
+                    job_description=description,
+                    budget=budget,
+                    client_score=client_score,
+                )
+
+                fit_score = round(score.get("opportunity_score", 0), 1)
+                win_probability = round((score.get("factor_scores", {}) or {}).get("win_probability", 0), 1)
+                priority = (score.get("priority_level") or "LOW").lower()
+
+                new_job = Job(
+                    title=title,
+                    description=description[:12000],
+                    budget_type="fixed",
+                    budget_min=budget,
+                    budget_max=budget,
+                    category="Opportunity Scan",
+                    meta_data={
+                        "source": "shadow_scanner",
+                        "priority": priority,
+                        "win_probability": win_probability,
+                        "fit_score": fit_score,
+                        "risk_level": score.get("risk_level"),
+                        "reasoning": score.get("reasoning", []),
+                    },
+                )
+                session.add(new_job)
+                await session.flush()
+
+                ranked.append({
+                    "job_id": str(new_job.id),
+                    "title": title,
+                    "win_probability": win_probability,
+                    "fit_score": fit_score,
+                    "priority": priority,
+                    "risk_level": score.get("risk_level"),
+                })
+
+            await session.commit()
+
+        ranked.sort(key=lambda x: (x["fit_score"], x["win_probability"]), reverse=True)
+        return {"status": "ok", "count": len(ranked), "opportunities": ranked}
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return {"status": "error", "message": str(e)}
+
+
+@app.get("/api/v1/opportunities/ranked")
+async def opportunities_ranked(limit: int = 50):
+    """Return ranked opportunity jobs already stored in the DB."""
+    from FIOS.database.connection import async_session_maker
+    from FIOS.database.models.jobs import Job
+    from sqlalchemy import select
+
+    try:
+        async with async_session_maker() as session:
+            result = await session.execute(
+                select(Job).where(Job.category == "Opportunity Scan").order_by(Job.updated_at.desc())
+            )
+            jobs = result.scalars().all()
+
+        items = []
+        for j in jobs:
+            meta = j.meta_data or {}
+            items.append({
+                "job_id": str(j.id),
+                "title": j.title,
+                "win_probability": meta.get("win_probability", 0),
+                "fit_score": meta.get("fit_score", 0),
+                "priority": meta.get("priority", "low"),
+                "risk_level": meta.get("risk_level", "unknown"),
+                "updated_at": j.updated_at.isoformat() if j.updated_at else "",
+            })
+
+        items.sort(key=lambda x: (x["fit_score"], x["win_probability"]), reverse=True)
+        return {"status": "ok", "count": len(items), "opportunities": items[:limit]}
     except Exception as e:
         import traceback
         traceback.print_exc()
