@@ -25,6 +25,31 @@ scheduler = AsyncIOScheduler()
 async def lifespan(app: FastAPI):
     # Startup Events
     print(f"Starting {settings.PROJECT_NAME}...")
+    
+    # Ensure database schemas are fully created
+    try:
+        from database.connection import engine
+        from database.models.base import Base
+        
+        # Explicit model imports to register with Base.metadata
+        import database.models.analytics
+        import database.models.clickup_mappings
+        import database.models.clients
+        import database.models.conversations
+        import database.models.freelancer_profiles
+        import database.models.jobs
+        import database.models.messages
+        import database.models.pricing_history
+        import database.models.proposals
+        import database.models.strategic_metrics
+        import database.models.system_prompts
+
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+        print("[Startup] Auto-created database tables.")
+    except Exception as e:
+        print(f"[Startup] Error creating DB tables: {e}")
+
     scheduler.start()
 
     # Run background embedder on startup
