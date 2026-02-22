@@ -16,7 +16,11 @@
     const match = window.location.href.match(/rooms\/([^\/]+)/);
     const roomId = match ? match[1] : null;
     if (roomId) {
-      chrome.storage.local.set({ current_room_id: roomId });
+      try {
+        chrome.storage.local.set({ current_room_id: roomId });
+      } catch (e) {
+        console.warn("Upie: Extension context likely invalidated", e);
+      }
     }
     return roomId;
   }
