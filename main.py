@@ -1,6 +1,6 @@
 import os
 import sys
-# Allow imports with 'FIOS.' prefix when run from within the FIOS directory
+# Allow imports with '' prefix when run from within the FIOS directory
 current_dir = os.path.dirname(os.path.abspath(__file__))
 if os.path.basename(current_dir) == "FIOS":
     parent_dir = os.path.dirname(current_dir)
@@ -16,7 +16,7 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from contextlib import asynccontextmanager
 import re
 
-from FIOS.core.config import settings
+from core.config import settings
 
 # Initialize Background Scheduler
 scheduler = AsyncIOScheduler()
@@ -29,7 +29,7 @@ async def lifespan(app: FastAPI):
 
     # Run background embedder on startup
     try:
-        from FIOS.memory.embedder import run_full_embed
+        from memory.embedder import run_full_embed
         import asyncio
         asyncio.create_task(run_full_embed())
         print("[Startup] Background embedder task launched.")
@@ -38,7 +38,7 @@ async def lifespan(app: FastAPI):
 
     # Build brain snapshot from existing data
     try:
-        from FIOS.brain_store import rebuild_brain
+        from brain_store import rebuild_brain
         rebuild_brain()
     except Exception as e:
         print(f"[Startup] Brain rebuild skipped: {e}")
@@ -87,7 +87,7 @@ class BrainRequest(BaseModel):
     data: Optional[dict] = None
 
 # Late import allows components to bootstrap
-from FIOS.orchestrator import agent_router
+from orchestrator import agent_router
 
 @app.post("/brain/execute")
 async def brain_execute(request: BrainRequest):
@@ -99,14 +99,14 @@ async def brain_execute(request: BrainRequest):
 @app.get("/api/v1/brain/snapshot")
 async def brain_snapshot():
     """Returns the full brain state. Used by n8n/OpenClaw agents."""
-    from FIOS.brain_store import load_brain
+    from brain_store import load_brain
     return {"status": "ok", "brain": load_brain()}
 
 
 @app.post("/api/v1/brain/rebuild")
 async def brain_rebuild():
     """Force a full brain rebuild from database."""
-    from FIOS.brain_store import rebuild_brain
+    from brain_store import rebuild_brain
     brain = rebuild_brain()
     return {"status": "ok", "brain": brain}
 
@@ -114,7 +114,7 @@ async def brain_rebuild():
 @app.post("/api/v1/brain/note")
 async def brain_add_note(body: dict):
     """Add a strategic note to the brain (from external agents)."""
-    from FIOS.brain_store import load_brain, save_brain
+    from brain_store import load_brain, save_brain
     note = body.get("note", "")
     if not note:
         return {"status": "error", "message": "note required"}
@@ -131,8 +131,8 @@ async def brain_add_note(body: dict):
 @app.post("/api/v1/research/job")
 async def perform_job_research(body: dict):
     """Deep research into a job. Called by n8n or other agents."""
-    from FIOS.agents.layer4_research.research_agent import research_agent
-    from FIOS.brain_store import load_brain
+    from agents.layer4_research.research_agent import research_agent
+    from brain_store import load_brain
     
     job_data = body.get("job_data", {})
     if not job_data:
@@ -176,7 +176,7 @@ async def legacy_job_analyze(body: dict):
     )
     return await agent_router.route(req)
 
-from FIOS.orchestrator.pipelines import pipeline
+from orchestrator.pipelines import pipeline
 
 @app.post("/api/v1/ingest")
 async def ingest_upwork_data(payload: dict):
@@ -202,7 +202,7 @@ async def ingest_upwork_data(payload: dict):
         record_ids = await pipeline.process_raw_input(data_type, payload)
         
         # Trigger brain rebuild to update stats in background
-        from FIOS.brain_store import rebuild_brain
+        from brain_store import rebuild_brain
         import asyncio
         asyncio.create_task(asyncio.to_thread(rebuild_brain))
 
@@ -255,7 +255,7 @@ async def manual_ingest_proposal(payload: dict):
 async def get_sync_stats():
     """Return counts specifically for the new Popup FIOS Sync Panel."""
     try:
-        from FIOS.memory.retrieval import memory
+        from memory.retrieval import memory
         stats = memory.get_stats()
         proposals = stats.get("winning_proposals", 0) + stats.get("losing_proposals", 0)
         conversations = stats.get("conversations", 0)
@@ -267,7 +267,7 @@ async def get_sync_stats():
 async def check_conversation_sync(room_id: str):
     """Check if a specific room_id exists in vector memory."""
     try:
-        from FIOS.memory.retrieval import memory
+        from memory.retrieval import memory
         col = memory.collection("conversations")
         result = col.get(where={"room_id": room_id}, limit=1)
         if result and result.get("ids") and len(result["ids"]) > 0:
@@ -281,7 +281,7 @@ async def check_conversation_sync(room_id: str):
 async def check_proposal_sync(proposal_id: str):
     """Wait and Check if a proposal exists in vector memory by proposal link Hash."""
     try:
-        from FIOS.memory.retrieval import memory
+        from memory.retrieval import memory
         
         # Searching winning and losing collections
         w_col = memory.collection("winning_proposals")
@@ -324,9 +324,9 @@ async def opportunities_ingest(body: dict):
     Store and rank scanned opportunities from the extension.
     Input: { jobs: [{title, description, budget, client_spend, client_hire_rate}] }
     """
-    from FIOS.analytics.focus_engine import score_opportunity
-    from FIOS.database.connection import async_session_maker
-    from FIOS.database.models.jobs import Job
+    from analytics.focus_engine import score_opportunity
+    from database.connection import async_session_maker
+    from database.models.jobs import Job
 
     jobs = body if isinstance(body, list) else body.get("jobs", [])
     if not jobs:
@@ -394,8 +394,8 @@ async def opportunities_ingest(body: dict):
 @app.get("/api/v1/opportunities/ranked")
 async def opportunities_ranked(limit: int = 50):
     """Return ranked opportunity jobs already stored in the DB."""
-    from FIOS.database.connection import async_session_maker
-    from FIOS.database.models.jobs import Job
+    from database.connection import async_session_maker
+    from database.models.jobs import Job
     from sqlalchemy import select
 
     try:
@@ -443,8 +443,8 @@ async def aggregate_analytics():
 @app.post("/api/v1/conversations/{room_id}/retrigger-summary")
 async def retrigger_summary(room_id: str):
     """Manually force AI summary/action-item/risk re-generation for a thread."""
-    from FIOS.database.connection import async_session_maker
-    from FIOS.database.models.conversations import Conversation
+    from database.connection import async_session_maker
+    from database.models.conversations import Conversation
     from sqlalchemy import select
     try:
         async with async_session_maker() as session:
@@ -475,8 +475,8 @@ async def crm_list_conversations(
     search: str = "",
 ):
     """Return paginated conversation list for the CRM popup dashboard."""
-    from FIOS.database.connection import async_session_maker
-    from FIOS.database.models.conversations import Conversation
+    from database.connection import async_session_maker
+    from database.models.conversations import Conversation
     from sqlalchemy import select
     try:
         async with async_session_maker() as session:
@@ -546,8 +546,8 @@ async def crm_list_conversations(
 @app.patch("/api/v1/crm/conversations/{room_id}")
 async def crm_update_conversation(room_id: str, body: dict):
     """Update CRM fields: tags, revenue_tracking, follow_up_at, notes."""
-    from FIOS.database.connection import async_session_maker
-    from FIOS.database.models.conversations import Conversation
+    from database.connection import async_session_maker
+    from database.models.conversations import Conversation
     from sqlalchemy import select, update
     allowed = {"tags", "revenue_tracking", "follow_up_at", "notes"}
     updates = {k: v for k, v in body.items() if k in allowed}
@@ -568,8 +568,8 @@ async def crm_update_conversation(room_id: str, body: dict):
 @app.get("/api/v1/crm/stats")
 async def crm_stats():
     """Dashboard summary cards: thread counts, messages, risk flags."""
-    from FIOS.database.connection import async_session_maker
-    from FIOS.database.models.conversations import Conversation
+    from database.connection import async_session_maker
+    from database.models.conversations import Conversation
     from sqlalchemy import select
     try:
         async with async_session_maker() as session:
@@ -618,8 +618,8 @@ async def crm_stats():
 @app.get("/api/v1/crm/search")
 async def crm_search(q: str = "", limit: int = 30):
     """Full-text keyword search across all synced conversation messages."""
-    from FIOS.database.connection import async_session_maker
-    from FIOS.database.models.conversations import Conversation
+    from database.connection import async_session_maker
+    from database.models.conversations import Conversation
     from sqlalchemy import select
     if not q:
         return {"results": [], "query": q}
@@ -704,8 +704,8 @@ async def crm_sync_log(limit: int = 20):
 @app.get("/api/v1/crm/export")
 async def crm_export(format: str = "json"):
     """Export all conversations as JSON or CSV (streamed as file download)."""
-    from FIOS.database.connection import async_session_maker
-    from FIOS.database.models.conversations import Conversation
+    from database.connection import async_session_maker
+    from database.models.conversations import Conversation
     from sqlalchemy import select
     from fastapi.responses import StreamingResponse
     import io, csv
@@ -767,7 +767,7 @@ async def crm_export(format: str = "json"):
 @app.post("/api/v1/copilot/voice/extract")
 async def copilot_voice_extract():
     """Extract freelancer voice profile from past wins/chats."""
-    from FIOS.copilot.voice import voice_engine
+    from copilot.voice import voice_engine
     try:
         result = await voice_engine.extract_voice_profile()
         return result
@@ -779,7 +779,7 @@ async def copilot_voice_extract():
 @app.get("/api/v1/copilot/voice/profile")
 async def copilot_voice_profile():
     """Get the current freelancer voice profile."""
-    from FIOS.copilot.voice import voice_engine
+    from copilot.voice import voice_engine
     try:
         profile = voice_engine.get_voice_profile()
         return {"status": "ok", "profile": profile}
@@ -789,8 +789,8 @@ async def copilot_voice_profile():
 @app.post("/api/v1/copilot/conversation")
 async def copilot_conversation(body: dict):
     """Full conversation assistant: summary, signals, reply suggestions."""
-    from FIOS.copilot.context import copilot_context
-    from FIOS.copilot.ai import copilot_ai
+    from copilot.context import copilot_context
+    from copilot.ai import copilot_ai
     try:
         room_id = body.get("room_id", "")
         strict_voice = body.get("strict_voice_mode", True)
@@ -810,8 +810,8 @@ async def copilot_conversation(body: dict):
 @app.post("/api/v1/copilot/job-assist")
 async def copilot_job_assist(body: dict):
     """Job page assistant: win probability, pricing, proposal drafts."""
-    from FIOS.copilot.context import copilot_context
-    from FIOS.copilot.ai import copilot_ai
+    from copilot.context import copilot_context
+    from copilot.ai import copilot_ai
     try:
         title = body.get("title", "")
         description = body.get("description", "")
@@ -831,8 +831,8 @@ async def copilot_job_assist(body: dict):
 @app.post("/api/v1/copilot/reply-suggest")
 async def copilot_reply_suggest(body: dict):
     """Strategic reply suggestion with brain context."""
-    from FIOS.copilot.context import copilot_context
-    from FIOS.copilot.ai import copilot_ai
+    from copilot.context import copilot_context
+    from copilot.ai import copilot_ai
     try:
         messages = body.get("messages", [])
         signals = body.get("signals", {})
@@ -858,8 +858,8 @@ async def copilot_reply_suggest(body: dict):
 @app.post("/api/v1/copilot/proposal-rewrite")
 async def copilot_proposal_rewrite(body: dict):
     """Generate a differentiated proposal with brain context."""
-    from FIOS.copilot.context import copilot_context
-    from FIOS.copilot.ai import copilot_ai
+    from copilot.context import copilot_context
+    from copilot.ai import copilot_ai
     try:
         draft = body.get("draft", "")
         job_description = body.get("job_description", "")
@@ -896,7 +896,7 @@ async def copilot_proposal_rewrite(body: dict):
 @app.post("/api/v1/copilot/evaluate-draft")
 async def copilot_evaluate_draft(body: dict):
     """Evaluate a proposal draft for weaknesses and strengthening suggestions."""
-    from FIOS.copilot.ai import copilot_ai
+    from copilot.ai import copilot_ai
     try:
         draft = body.get("draft", "")
         job_description = body.get("job_description", "")
@@ -913,8 +913,8 @@ async def copilot_evaluate_draft(body: dict):
 @app.post("/api/v1/copilot/watchdog")
 async def copilot_watchdog_check(body: dict):
     """Detect optimal follow-up window and flag ghost risk for inactive threads."""
-    from FIOS.copilot.context import copilot_context
-    from FIOS.copilot.ai import copilot_ai
+    from copilot.context import copilot_context
+    from copilot.ai import copilot_ai
     try:
         room_id = body.get("room_id", "")
         if not room_id:
@@ -934,7 +934,7 @@ async def copilot_watchdog_check(body: dict):
 async def copilot_memory_stats():
     """Return vector memory statistics and freelancer profile."""
     try:
-        from FIOS.memory.retrieval import memory
+        from memory.retrieval import memory
         return {
             "status": "ok",
             "stats": memory.get_stats(),
@@ -954,12 +954,12 @@ async def copilot_strategy_overview(force: bool = False):
     Return cross-thread strategic intelligence.
     Uses cached data by default. Pass ?force=true to recompute.
     """
-    from FIOS.copilot.strategy import compute_strategy, save_strategy_to_db, get_cached_strategy
+    from copilot.strategy import compute_strategy, save_strategy_to_db, get_cached_strategy
     try:
         # Ensure table exists
-        from FIOS.database.models.strategic_metrics import StrategicMetrics
-        from FIOS.database.connection import engine
-        from FIOS.database.models.base import Base
+        from database.models.strategic_metrics import StrategicMetrics
+        from database.connection import engine
+        from database.models.base import Base
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
 
@@ -982,11 +982,11 @@ async def copilot_strategy_overview(force: bool = False):
 @app.post("/api/v1/copilot/strategy/refresh")
 async def copilot_strategy_refresh():
     """Force-recompute strategy metrics (called after outcome changes)."""
-    from FIOS.copilot.strategy import compute_strategy, save_strategy_to_db
+    from copilot.strategy import compute_strategy, save_strategy_to_db
     try:
-        from FIOS.database.models.strategic_metrics import StrategicMetrics
-        from FIOS.database.connection import engine
-        from FIOS.database.models.base import Base
+        from database.models.strategic_metrics import StrategicMetrics
+        from database.connection import engine
+        from database.models.base import Base
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
 
@@ -1010,7 +1010,7 @@ async def copilot_win_probability(body: dict):
     Input: {title, description, niche, budget, proposal_text, bid_amount, client_score}
     Returns: {win_probability, confidence_level, contributing_factors, risk_flags}
     """
-    from FIOS.analytics.outcome_engine import compute_win_probability
+    from analytics.outcome_engine import compute_win_probability
     try:
         result = await compute_win_probability(
             job_title=body.get("title", ""),
@@ -1031,12 +1031,12 @@ async def copilot_win_probability(body: dict):
 @app.get("/api/v1/copilot/insights/outcome-analytics")
 async def copilot_outcome_analytics():
     """Return cross-thread outcome analytics."""
-    from FIOS.analytics.outcome_engine import compute_outcome_analytics
+    from analytics.outcome_engine import compute_outcome_analytics
     try:
         # Ensure table exists
-        from FIOS.database.models.strategic_metrics import StrategicMetrics
-        from FIOS.database.connection import engine
-        from FIOS.database.models.base import Base
+        from database.models.strategic_metrics import StrategicMetrics
+        from database.connection import engine
+        from database.models.base import Base
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
 
@@ -1059,7 +1059,7 @@ async def copilot_pricing(body: dict):
     Input: {title, description, budget, niche, win_probability}
     Returns: recommended_bid, ranges, risks, reasoning
     """
-    from FIOS.analytics.pricing_engine import suggest_pricing
+    from analytics.pricing_engine import suggest_pricing
     try:
         result = await suggest_pricing(
             job_title=body.get("title", ""),
@@ -1078,7 +1078,7 @@ async def copilot_pricing(body: dict):
 @app.get("/api/v1/copilot/insights/proposal-performance")
 async def copilot_proposal_performance():
     """Return cross-proposal performance analytics."""
-    from FIOS.analytics.pricing_engine import analyze_proposal_performance
+    from analytics.pricing_engine import analyze_proposal_performance
     try:
         result = await analyze_proposal_performance()
         return {"status": "ok", **result}
@@ -1095,7 +1095,7 @@ async def copilot_proposal_performance():
 @app.get("/api/v1/copilot/insights/negotiation")
 async def copilot_negotiation():
     """Cross-thread negotiation pattern analysis."""
-    from FIOS.analytics.behavior_engine import analyze_negotiation_patterns
+    from analytics.behavior_engine import analyze_negotiation_patterns
     try:
         result = await analyze_negotiation_patterns()
         return {"status": "ok", **result}
@@ -1108,7 +1108,7 @@ async def copilot_negotiation():
 @app.post("/api/v1/copilot/insights/followup")
 async def copilot_followup(body: dict):
     """Per-thread follow-up recommendation with ghost probability."""
-    from FIOS.analytics.behavior_engine import suggest_followup
+    from analytics.behavior_engine import suggest_followup
     try:
         room_id = body.get("room_id", "")
         if not room_id:
@@ -1124,7 +1124,7 @@ async def copilot_followup(body: dict):
 @app.get("/api/v1/copilot/insights/followup-timing")
 async def copilot_followup_timing():
     """Cross-thread follow-up timing analytics."""
-    from FIOS.analytics.behavior_engine import analyze_followup_timing
+    from analytics.behavior_engine import analyze_followup_timing
     try:
         result = await analyze_followup_timing()
         return {"status": "ok", **result}
@@ -1141,7 +1141,7 @@ async def copilot_followup_timing():
 @app.get("/api/v1/copilot/strategy/revenue")
 async def copilot_revenue():
     """Revenue concentration analysis."""
-    from FIOS.analytics.focus_engine import analyze_revenue_concentration
+    from analytics.focus_engine import analyze_revenue_concentration
     try:
         result = await analyze_revenue_concentration()
         return {"status": "ok", **result}
@@ -1154,7 +1154,7 @@ async def copilot_revenue():
 @app.post("/api/v1/copilot/strategy/opportunity-score")
 async def copilot_opportunity_score(body: dict):
     """Score any job opportunity 0-100."""
-    from FIOS.analytics.focus_engine import score_opportunity
+    from analytics.focus_engine import score_opportunity
     try:
         result = await score_opportunity(
             job_title=body.get("title", ""),
@@ -1174,7 +1174,7 @@ async def copilot_opportunity_score(body: dict):
 @app.get("/api/v1/copilot/strategy/distractions")
 async def copilot_distractions():
     """Identify low-ROI distraction patterns."""
-    from FIOS.analytics.focus_engine import detect_distractions
+    from analytics.focus_engine import detect_distractions
     try:
         result = await detect_distractions()
         return {"status": "ok", **result}
@@ -1187,7 +1187,7 @@ async def copilot_distractions():
 @app.get("/api/v1/copilot/strategy/daily-brief")
 async def copilot_daily_brief():
     """Daily strategic brief with priority jobs, risks, and recommendations."""
-    from FIOS.analytics.focus_engine import generate_daily_brief
+    from analytics.focus_engine import generate_daily_brief
     try:
         result = await generate_daily_brief()
         return {"status": "ok", **result}
@@ -1204,7 +1204,7 @@ async def copilot_daily_brief():
 @app.get("/api/v1/copilot/strategy/growth")
 async def copilot_growth_dashboard():
     """Executive growth dashboard with CLV, nurture targets, expansion pipeline."""
-    from FIOS.analytics.client_growth_engine import generate_growth_dashboard
+    from analytics.client_growth_engine import generate_growth_dashboard
     try:
         result = await generate_growth_dashboard()
         return {"status": "ok", **result}
@@ -1217,7 +1217,7 @@ async def copilot_growth_dashboard():
 @app.get("/api/v1/copilot/strategy/client-profiles")
 async def copilot_client_profiles():
     """All client CLV profiles sorted by lifetime value."""
-    from FIOS.analytics.client_growth_engine import compute_client_profiles
+    from analytics.client_growth_engine import compute_client_profiles
     try:
         profiles = await compute_client_profiles()
         return {"status": "ok", "total_clients": len(profiles), "profiles": profiles}
@@ -1230,7 +1230,7 @@ async def copilot_client_profiles():
 @app.post("/api/v1/copilot/strategy/repeat-predict")
 async def copilot_repeat_predict(body: dict):
     """Predict repeat probability for a specific client."""
-    from FIOS.analytics.client_growth_engine import predict_repeat
+    from analytics.client_growth_engine import predict_repeat
     try:
         name = body.get("client_name", "")
         if not name:
@@ -1246,7 +1246,7 @@ async def copilot_repeat_predict(body: dict):
 @app.get("/api/v1/copilot/strategy/upsell-opportunities")
 async def copilot_upsell():
     """Detect upsell/expansion opportunities across active threads."""
-    from FIOS.analytics.client_growth_engine import detect_upsell_opportunities
+    from analytics.client_growth_engine import detect_upsell_opportunities
     try:
         result = await detect_upsell_opportunities()
         return {"status": "ok", **result}
@@ -1259,7 +1259,7 @@ async def copilot_upsell():
 @app.get("/api/v1/copilot/strategy/client-segments")
 async def copilot_client_segments():
     """Client quality segmentation into 5 tiers."""
-    from FIOS.analytics.client_growth_engine import get_segmented_clients
+    from analytics.client_growth_engine import get_segmented_clients
     try:
         segments = await get_segmented_clients()
         return {"status": "ok", "segments": segments}
@@ -1278,7 +1278,7 @@ async def copilot_client_segments():
 @app.get("/api/v1/copilot/strategy/niche-strength")
 async def copilot_niche_strength():
     """Analysis of win rate, revenue, stress, and repeats by niche."""
-    from FIOS.analytics.positioning_engine import analyze_niche_strength
+    from analytics.positioning_engine import analyze_niche_strength
     try:
         result = await analyze_niche_strength()
         return {"status": "ok", **result}
@@ -1291,7 +1291,7 @@ async def copilot_niche_strength():
 @app.get("/api/v1/copilot/strategy/concentration-risk")
 async def copilot_concentration_risk():
     """Detect overexposure to single niches, clients, or budget bands."""
-    from FIOS.analytics.positioning_engine import analyze_concentration_risk
+    from analytics.positioning_engine import analyze_concentration_risk
     try:
         result = await analyze_concentration_risk()
         return {"status": "ok", **result}
@@ -1304,7 +1304,7 @@ async def copilot_concentration_risk():
 @app.get("/api/v1/copilot/strategy/portfolio-gaps")
 async def copilot_portfolio_gaps():
     """Missing categories, sample recommendations, rising keywords."""
-    from FIOS.analytics.positioning_engine import analyze_portfolio_gaps
+    from analytics.positioning_engine import analyze_portfolio_gaps
     try:
         result = await analyze_portfolio_gaps()
         return {"status": "ok", **result}
@@ -1317,7 +1317,7 @@ async def copilot_portfolio_gaps():
 @app.get("/api/v1/copilot/strategy/competition-signals")
 async def copilot_competition_signals():
     """Lightweight trend analysis for emerging/declining niches."""
-    from FIOS.analytics.positioning_engine import analyze_competition_signals
+    from analytics.positioning_engine import analyze_competition_signals
     try:
         result = await analyze_competition_signals()
         return {"status": "ok", **result}
@@ -1330,7 +1330,7 @@ async def copilot_competition_signals():
 @app.get("/api/v1/copilot/strategy/positioning")
 async def copilot_positioning():
     """Executive summary of strategic positioning and focus niches."""
-    from FIOS.analytics.positioning_engine import generate_positioning_summary
+    from analytics.positioning_engine import generate_positioning_summary
     try:
         result = await generate_positioning_summary()
         return {"status": "ok", **result}
@@ -1349,7 +1349,7 @@ async def copilot_positioning():
 @app.get("/api/v1/copilot/insights/adaptive")
 async def copilot_adaptive_insights():
     """Returns top active patterns, declining patterns, and growth directions."""
-    from FIOS.analytics.adaptive_patterns import generate_adaptive_insights
+    from analytics.adaptive_patterns import generate_adaptive_insights
     try:
         result = await generate_adaptive_insights()
         return {"status": "ok", **result}
@@ -1362,7 +1362,7 @@ async def copilot_adaptive_insights():
 @app.post("/api/v1/copilot/insights/proposal-drift")
 async def copilot_proposal_drift(body: dict):
     """Detect if a new proposal deviates from historically winning patterns."""
-    from FIOS.analytics.adaptive_patterns import detect_style_drift
+    from analytics.adaptive_patterns import detect_style_drift
     try:
         draft = body.get("proposal_text", "")
         bid = body.get("bid_amount", 0.0)
@@ -1382,7 +1382,7 @@ async def copilot_proposal_drift(body: dict):
 
 @app.post("/api/v1/copilot/simulate/strategy")
 async def copilot_simulate_strategy(body: dict):
-    from FIOS.copilot.simulation import simulator
+    from copilot.simulation import simulator
     try:
         context_str = body.get("context", "")
         if not context_str:
@@ -1396,7 +1396,7 @@ async def copilot_simulate_strategy(body: dict):
 
 @app.post("/api/v1/copilot/simulate/pricing")
 async def copilot_simulate_pricing(body: dict):
-    from FIOS.copilot.simulation import simulator
+    from copilot.simulation import simulator
     try:
         job_title = body.get("job_title", "")
         job_description = body.get("job_description", "")
@@ -1410,7 +1410,7 @@ async def copilot_simulate_pricing(body: dict):
 
 @app.post("/api/v1/copilot/simulate/negotiation")
 async def copilot_simulate_negotiation(body: dict):
-    from FIOS.copilot.simulation import simulator
+    from copilot.simulation import simulator
     try:
         messages = body.get("messages", "")
         client_pushback = body.get("client_pushback", "")
@@ -1431,7 +1431,7 @@ async def copilot_simulate_negotiation(body: dict):
 @app.post("/api/v1/copilot/memory-recall")
 async def copilot_memory_recall(body: dict):
     """Fast retrieval of similar past jobs, winning proposals, and portfolio matches."""
-    from FIOS.memory.recall import build_memory_recall
+    from memory.recall import build_memory_recall
     try:
         title = body.get("job_title", "")
         desc = body.get("job_description", "")
@@ -1483,4 +1483,4 @@ async def copilot_telemetry_trust(body: dict):
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("FIOS.main:app", host="127.0.0.1", port=8000, reload=True)
+    uvicorn.run("main:app", host="127.0.0.1", port=8000, reload=True)
