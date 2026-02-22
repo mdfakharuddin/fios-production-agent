@@ -607,7 +607,8 @@ class IngestionPipeline:
 
                         # Trigger Summary refresh if significant new info
                         if len(new_msgs) > 3 or not existing_conv.summary:
-                            await self.trigger_ai_summary(existing_conv.id, existing_conv.messages_json)
+                            import asyncio
+                            asyncio.create_task(self.trigger_ai_summary(existing_conv.id, existing_conv.messages_json))
 
                     record_ids.append(str(existing_conv.id))
                 else:
@@ -633,7 +634,8 @@ class IngestionPipeline:
                     await session.flush()
                     record_ids.append(str(new_conv.id))
 
-                    await self.trigger_ai_summary(new_conv.id, messages)
+                    import asyncio
+                    asyncio.create_task(self.trigger_ai_summary(new_conv.id, messages))
 
                 from orchestrator.triggers import EventPayload
                 await triggers.trigger(EventPayload(event_type=EventType.CONVERSATION_UPDATED, data={"id": record_ids[-1], "data": conv_data}))
