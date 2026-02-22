@@ -1,5 +1,14 @@
 // Scrapes data from the active Upwork page
 
+(function injectInterceptor() {
+  if (window.upieInterceptorInjected) return;
+  window.upieInterceptorInjected = true;
+  const script = document.createElement('script');
+  script.src = chrome.runtime.getURL('content_scripts/interceptor.js');
+  script.onload = function() { this.remove(); };
+  (document.head || document.documentElement).appendChild(script);
+})();
+
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === "EXTRACT_PAGE_DATA") {
     console.log("Upie: Received extraction request.");
@@ -226,6 +235,53 @@ window.addEventListener('Upie_CLEAR_BUFFER', () => {
   updateUICount();
 });
 
+window.addEventListener('Upie_NETWORK_INTERCEPT', (evt) => {
+    try {
+        if (!evt.detail || !evt.detail.response) return;
+        const text = evt.detail.response;
+        if (!text.startsWith('{') && !text.startsWith('[')) return;
+        const jsonObj = JSON.parse(text);
+        
+        let foundMessages = [];
+        
+        function extractRecursive(obj) {
+            if (!obj) return;
+            if (Array.isArray(obj)) {
+                obj.forEach(extractRecursive);
+            } else if (typeof obj === 'object') {
+                if ((obj.body || obj.message || obj.content) && 
+                    (obj.sender || obj.author || obj.senderUser || obj.id)) {
+                    
+                    const textContent = obj.body || obj.message || obj.content;
+                    if (typeof textContent === 'string' && textContent.length > 0) {
+                      foundMessages.push({
+                          message_id: obj.id || obj.messageId || String(Date.now()),
+                          text: textContent.trim(),
+                          sender: obj.sender?.name || obj.author?.name || obj.sender?.userId || "Participant",
+                          time: obj.createdAt || obj.time || new Date().toISOString(),
+                          role: "participant"
+                      });
+                    }
+                }
+                for (let key in obj) {
+                    if (typeof obj[key] === 'object') extractRecursive(obj[key]);
+                }
+            }
+        }
+        
+        extractRecursive(jsonObj);
+        
+        if (foundMessages.length > 0) {
+            console.log(`Upie: Network Interceptor Extracted ${foundMessages.length} pure payload Messages natively.`);
+            foundMessages.forEach(msg => {
+                const key = `${msg.sender}:${msg.text.substring(0, 100)}`;
+                messageBuffer.set(key, msg);
+            });
+            updateUICount();
+        }
+    } catch(e) {}
+});
+
 function startBuffering() {
   // Initial capture
   captureVisibleMessages();
@@ -434,7 +490,19 @@ messageNodes.forEach(msg => {
     }
   });
 
-  console.log(`Upie: Captured ${uniqueMessages.length} unique messages.`);
+  // Include intercepted messages from messageBuffer
+  Array.from(messageBuffer.values()).forEach(m => {
+    const key = `${m.sender}:${m.text.substring(0, 100)}`;
+    if (!seen.has(key)) {
+      uniqueMessages.push(m);
+      seen.add(key);
+    }
+  });
+
+  // Ensure uniqueMessages are sorted by time heuristic (if possible), or simply chronological order
+  // Actually, Upwork network buffers usually append.
+
+  console.log(`Upie: Captured ${uniqueMessages.length} unique messages (Merged DOM & Network).`);
   if (uniqueMessages.length > 0) {
     console.log("Upie: Data Preview (Latest 3):", uniqueMessages.slice(-3));
   }

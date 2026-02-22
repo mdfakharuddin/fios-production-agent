@@ -45,6 +45,7 @@
   "web_accessible_resources": [
     {
       "resources": [
+        "content_scripts/interceptor.js",
         "content_scripts/floating_ui.css",
         "icons/*.png"
       ],
