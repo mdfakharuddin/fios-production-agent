@@ -10,7 +10,7 @@ else:
     if current_dir not in sys.path:
         sys.path.insert(0, current_dir)
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from contextlib import asynccontextmanager
@@ -63,6 +63,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+@app.middleware("http")
+async def strip_fios_prefix(request: Request, call_next):
+    if request.scope["path"].startswith("/fios"):
+        request.scope["path"] = request.scope["path"][5:] or "/"
+    return await call_next(request)
 
 @app.get("/")
 async def root():
