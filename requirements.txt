@@ -8,3 +8,5 @@ apscheduler
 python-dotenv
 pydantic
 pydantic-settings
+greenlet
+aiosqlite
