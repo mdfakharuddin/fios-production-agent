@@ -211,6 +211,16 @@ from orchestrator.pipelines import pipeline
 @app.post("/api/v1/ingest")
 async def ingest_upwork_data(payload: dict):
     """Webhook endpoint for the Chrome Extension."""
+    if "data" not in payload:
+        payload = {
+            "type": payload.get("page_type", "unknown"),
+            "data": payload,
+            "url": payload.get("url", ""),
+            "timestamp": str(payload.get("timestamp", ""))
+        }
+    else:
+        payload["timestamp"] = str(payload.get("timestamp", ""))
+
     data_type = payload.get("type", "unknown")
     raw_data = payload.get("data", [])
     
@@ -240,7 +250,7 @@ async def manual_ingest_conversation(payload: dict):
             "type": "conversation",
             "data": payload,
             "url": payload.get("conversation_link") or payload.get("url") or "manual://conversation",
-            "timestamp": payload.get("timestamp") or __import__("datetime").datetime.utcnow().isoformat() + "Z",
+            "timestamp": str(payload.get("timestamp") or __import__("datetime").datetime.utcnow().isoformat() + "Z"),
         }
         record_ids = await pipeline.process_raw_input("conversation", wrapped_payload)
         return {"status": "success", "message": "Conversation saved successfully.", "records": len(record_ids)}
@@ -257,7 +267,7 @@ async def manual_ingest_proposal(payload: dict):
             "type": "proposals",
             "data": [payload], # pipeline.process_raw_input expects list for proposals typically
             "url": payload.get("proposal_link") or payload.get("url") or "manual://proposal",
-            "timestamp": payload.get("timestamp") or __import__("datetime").datetime.utcnow().isoformat() + "Z",
+            "timestamp": str(payload.get("timestamp") or __import__("datetime").datetime.utcnow().isoformat() + "Z"),
         }
         record_ids = await pipeline.process_raw_input("proposals", wrapped_payload)
         return {"status": "success", "message": "Proposal saved successfully.", "records": len(record_ids)}

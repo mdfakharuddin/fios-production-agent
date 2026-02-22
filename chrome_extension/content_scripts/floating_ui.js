@@ -312,8 +312,16 @@
     const convo = extractConversationContext();
     const messages = Array.isArray(convo?.messages) ? convo.messages : [];
     const latest = messages
-      .filter((m) => (m.role || '').toLowerCase() === 'client' || (m.sender || '').toLowerCase().includes('client'))
+      .filter((m) => {
+        const s = (m.sender || '').toLowerCase();
+        return s !== 'me' && !s.includes('fakharuddin') && !s.includes('fakhar uddin') && s !== 'participant';
+      })
       .pop();
+    
+    // Fallback: If still nothing, grab the absolute last message in the thread
+    if (!latest && messages.length > 0) {
+      return messages[messages.length - 1].text;
+    }
     return latest?.text || 'No client message found in this thread yet.';
   }
 
@@ -321,18 +329,24 @@
     const cleaned = String(text || '').trim();
     if (!cleaned) return [];
 
-    const numbered = cleaned
-      .split(/\n\s*(?:\d+\.|-|•)\s*/g)
-      .map((line) => line.trim())
-      .filter(Boolean);
+    let options = [];
+    
+    // Parse numbered lists or dashed lists
+    const splitFormat = cleaned.split(/\n\s*(?:\d+\.|-|•)\s*/g).map((line) => line.trim()).filter(Boolean);
+    if (splitFormat.length >= 2) {
+      options = splitFormat;
+    } else {
+      // Parse quoted blocks like "Option 1" "Option 2"
+      const quoteMatches = cleaned.match(/"([^"\\]*(?:\\.[^"\\]*)*)"/g);
+      if (quoteMatches && quoteMatches.length >= 2) {
+        options = quoteMatches.map(m => m.replace(/^"|"$/g, '').trim());
+      } else {
+        // Fallback: split by double newline
+        options = cleaned.split(/\n\s*\n/).filter(Boolean);
+      }
+    }
 
-    if (numbered.length >= 2) return numbered.slice(0, 5);
-
-    return cleaned
-      .split(/\n{2,}|\n/g)
-      .map((line) => line.trim())
-      .filter(Boolean)
-      .slice(0, 5);
+    return options.slice(0, 5);
   }
 
   async function generateQuickReplies() {
@@ -342,7 +356,7 @@
       elReplyPreview.innerText = lastClientMessage;
 
       const output = await executeBrainCommand(
-        `Generate 3 context-aware reply options for this client message. Return plain text list only.\n\nClient message:\n${lastClientMessage}`
+        `Generate 3 context-aware reply options for this conversation. Return strict plain text numbered list ONLY. Do not wrap items in quotes.\n\nLatest conversation context:\n${lastClientMessage}`
       );
 
       const replies = parseReplyOptions(output);
