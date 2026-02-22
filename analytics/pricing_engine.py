@@ -2,9 +2,9 @@ import json
 from sqlalchemy.future import select
 from typing import Dict, Any, List
 
-from FIOS.database.connection import async_session_maker
-from FIOS.database.models.pricing_history import PricingHistory
-from FIOS.database.models.conversations import Conversation
+from database.connection import async_session_maker
+from database.models.pricing_history import PricingHistory
+from database.models.conversations import Conversation
 
 async def get_patterns(project_type: str = "") -> Dict[str, Any]:
     """Retrieve historical pricing patterns."""

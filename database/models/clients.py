@@ -1,7 +1,7 @@
 from sqlalchemy import String, Integer, Float, Boolean, Text
 from sqlalchemy.orm import Mapped, mapped_column
 from typing import Optional
-from FIOS.database.models.base import BaseModel
+from database.models.base import BaseModel
 
 class Client(BaseModel):
     __tablename__ = "clients"

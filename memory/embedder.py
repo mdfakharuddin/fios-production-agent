@@ -17,11 +17,11 @@ async def run_full_embed():
     Scan all conversations, proposals, and jobs in the database.
     Embed anything not yet in the vector store.
     """
-    from FIOS.database.connection import async_session_maker
-    from FIOS.database.models.conversations import Conversation
-    from FIOS.database.models.jobs import Job
-    from FIOS.database.models.proposals import Proposal
-    from FIOS.memory.retrieval import memory
+    from database.connection import async_session_maker
+    from database.models.conversations import Conversation
+    from database.models.jobs import Job
+    from database.models.proposals import Proposal
+    from memory.retrieval import memory
     from sqlalchemy import select
 
     stats = {"conversations": 0, "proposals": 0, "jobs": 0}
@@ -86,7 +86,7 @@ async def run_full_embed():
 
 async def embed_conversation_incremental(room_id: str, messages: list):
     """Embed a single conversation after ingest (called from pipeline)."""
-    from FIOS.memory.retrieval import memory
+    from memory.retrieval import memory
     try:
         added = memory.embed_conversation(room_id, messages)
         print(f"[Embedder] Incremental embed for {room_id}: {added} chunks")
@@ -98,7 +98,7 @@ async def embed_conversation_incremental(room_id: str, messages: list):
 
 async def embed_job_incremental(job_id: str, title: str, description: str):
     """Embed a single job after ingest."""
-    from FIOS.memory.retrieval import memory
+    from memory.retrieval import memory
     try:
         return memory.embed_job(job_id, title, description)
     except Exception:
@@ -107,7 +107,7 @@ async def embed_job_incremental(job_id: str, title: str, description: str):
 
 async def embed_proposal_incremental(proposal_id: str, text: str, outcome: str = "pending", job_title: str = ""):
     """Embed a single proposal after ingest."""
-    from FIOS.memory.retrieval import memory
+    from memory.retrieval import memory
     try:
         return memory.embed_proposal(proposal_id, text, outcome, job_title)
     except Exception:

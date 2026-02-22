@@ -14,14 +14,14 @@ import os
 # We need to insert `/Users/mdfakharuddin/Desktop/upwork Agent/` into the path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
-from FIOS.core.config import settings
-from FIOS.database.models.base import Base
+from core.config import settings
+from database.models.base import Base
 # Import all models so they register with Base.metadata before Alembic reads them
-from FIOS.database.models.clients import Client
-from FIOS.database.models.jobs import Job
-from FIOS.database.models.proposals import Proposal
-from FIOS.database.models.conversations import Conversation
-from FIOS.database.models.analytics import Analytics
+from database.models.clients import Client
+from database.models.jobs import Job
+from database.models.proposals import Proposal
+from database.models.conversations import Conversation
+from database.models.analytics import Analytics
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

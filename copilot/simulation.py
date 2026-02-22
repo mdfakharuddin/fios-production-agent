@@ -5,7 +5,7 @@ Evaluates multiple strategic paths before the user acts, providing deterministic
 
 import json
 from typing import Dict, Any, List
-from FIOS.copilot.ai import _call_ai, _parse_json_response
+from copilot.ai import _call_ai, _parse_json_response
 
 class DecisionSimulator:
     

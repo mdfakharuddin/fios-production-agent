@@ -10,7 +10,7 @@ import httpx
 import json
 import re
 from typing import Dict, Any, List, Optional
-from FIOS.core.config import settings
+from core.config import settings
 
 
 # ── AI Provider ────────────────────────────────────────────────────────────
@@ -462,7 +462,7 @@ def _brain_context(ctx: Dict = None) -> str:
     """Format brain context compactly for prompts."""
     if not ctx:
         try:
-            from FIOS.brain_store import get_brain_compact
+            from brain_store import get_brain_compact
             return get_brain_compact()
         except Exception:
             return "No historical data available."

@@ -1,10 +1,10 @@
 import json
-from FIOS.copilot.ai import _call_ai, SYSTEM_PROMPT
-from FIOS.memory import retrieval
+from copilot.ai import _call_ai, SYSTEM_PROMPT
+from memory import retrieval
 
 async def generate_proposal(request):
     """Generate a proposal fully contextually."""
-    from FIOS.brain_store import load_brain
+    from brain_store import load_brain
     
     job_context = request.job_context or {}
     job_desc = job_context.get("description", "")

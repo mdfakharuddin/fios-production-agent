@@ -10,7 +10,7 @@ async function createShadowTab() {
     });
 
     shadowTabId = tab.id;
-    console.log("FIOS Shadow Tab created:", shadowTabId);
+    console.log("Upie Shadow Tab created:", shadowTabId);
 }
 
 async function refreshShadowTab() {

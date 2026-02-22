@@ -1,18 +1,18 @@
 from typing import Any, Dict, Optional
 import uuid
-from FIOS.orchestrator.triggers import triggers, EventType
+from orchestrator.triggers import triggers, EventType
 
-from FIOS.ingestion.validators.schemas import IngestionPayload, RawJobData, RawProposalData, RawConversationData
-from FIOS.ingestion.cleaners.normalizer import clean_budget, normalize_proposal_status, clean_text
-from FIOS.ingestion.cleaners.dom_semantic import extract_semantic_snapshot, infer_profile_from_snapshot
+from ingestion.validators.schemas import IngestionPayload, RawJobData, RawProposalData, RawConversationData
+from ingestion.cleaners.normalizer import clean_budget, normalize_proposal_status, clean_text
+from ingestion.cleaners.dom_semantic import extract_semantic_snapshot, infer_profile_from_snapshot
 
-from FIOS.database.connection import async_session_maker
-from FIOS.database.models.jobs import Job, JobOutcome
-from FIOS.database.models.proposals import Proposal, ProposalStatus
-from FIOS.database.models.conversations import Conversation
-from FIOS.database.models.clients import Client
-from FIOS.database.models.analytics import Analytics
-from FIOS.database.models.freelancer_profiles import FreelancerProfile
+from database.connection import async_session_maker
+from database.models.jobs import Job, JobOutcome
+from database.models.proposals import Proposal, ProposalStatus
+from database.models.conversations import Conversation
+from database.models.clients import Client
+from database.models.analytics import Analytics
+from database.models.freelancer_profiles import FreelancerProfile
 import json
 import re
 from datetime import datetime, timezone
@@ -314,11 +314,11 @@ class IngestionPipeline:
                 await session.flush()
                 record_ids.append(str(new_job.id))
 
-                from FIOS.orchestrator.triggers import EventPayload
+                from orchestrator.triggers import EventPayload
                 await triggers.trigger(EventPayload(event_type=EventType.NEW_JOB_UPLOADED, data={"id": new_job.id, "data": job_data}))
 
             elif payload.type == "proposals":
-                from FIOS.memory.retrieval import memory
+                from memory.retrieval import memory
                 for prop in payload.data:
                     prop_id = prop.get("proposal_link")
                     if prop_id:
@@ -355,7 +355,7 @@ class IngestionPipeline:
                     
                     # Dispatch to Embedder immediately since we have the prop_id safely scoped
                     try:
-                        from FIOS.memory.embedder import embed_proposal_incremental
+                        from memory.embedder import embed_proposal_incremental
                         outcome = "pending"
                         if "hired" in status.lower() or "active" in status.lower():
                             outcome = "won"
@@ -412,7 +412,7 @@ class IngestionPipeline:
                 record_ids.extend([str(new_job.id), str(new_proposal.id)])
 
                 try:
-                    from FIOS.memory.embedder import embed_proposal_incremental
+                    from memory.embedder import embed_proposal_incremental
                     outcome = "pending"
                     if "hired" in status.lower() or "active" in status.lower():
                         outcome = "won"
@@ -514,7 +514,7 @@ class IngestionPipeline:
                     record_ids.append(str(new_job.id))
 
                 try:
-                    from FIOS.memory.embedder import embed_job_incremental
+                    from memory.embedder import embed_job_incremental
                     await embed_job_incremental(
                         str(record_ids[0]) if record_ids else "",
                         title,
@@ -635,7 +635,7 @@ class IngestionPipeline:
 
                     await self.trigger_ai_summary(new_conv.id, messages)
 
-                from FIOS.orchestrator.triggers import EventPayload
+                from orchestrator.triggers import EventPayload
                 await triggers.trigger(EventPayload(event_type=EventType.CONVERSATION_UPDATED, data={"id": record_ids[-1], "data": conv_data}))
 
             elif payload.type == "stealth_proposal_job_merge":
@@ -670,7 +670,7 @@ class IngestionPipeline:
                 await session.flush()
                 record_ids.append(str(new_proposal.id))
 
-                from FIOS.orchestrator.triggers import EventPayload
+                from orchestrator.triggers import EventPayload
                 await triggers.trigger(EventPayload(event_type=EventType.NEW_JOB_UPLOADED, data={"id": new_job.id, "data": job_data}))
 
             await session.commit()
@@ -678,7 +678,7 @@ class IngestionPipeline:
         # ── Phase 3: Write sync log entry ─────────────────────────────────────
         if payload.type in ("conversation", "stealth_proposal_job_merge"):
             try:
-                from FIOS.main import _append_sync_log
+                from main import _append_sync_log
                 import datetime as _dt
                 _append_sync_log({
                     "ts": _dt.datetime.utcnow().isoformat() + "Z",
@@ -692,7 +692,7 @@ class IngestionPipeline:
 
         # ── Incremental embedding into vector memory ──────────────────────
         try:
-            from FIOS.memory.embedder import embed_conversation_incremental, embed_job_incremental
+            from memory.embedder import embed_conversation_incremental, embed_job_incremental
             if payload.type == "conversation":
                 room_id = payload.data.get("room_id") if isinstance(payload.data, dict) else None
                 msgs = payload.data.get("messages", []) if isinstance(payload.data, dict) else []
@@ -762,7 +762,7 @@ class IngestionPipeline:
 
     async def trigger_ai_summary(self, conversation_id: uuid.UUID, messages: list):
         """Calls the internal AI service to extract Action Items, Risks, and Summaries."""
-        from FIOS.copilot.ai import _call_ai, SYSTEM_PROMPT
+        from copilot.ai import _call_ai, SYSTEM_PROMPT
         try:
             # Use last 100 messages for significantly richer context
             conv_text = "\n".join([

@@ -2,7 +2,7 @@ from typing import Optional
 from sqlalchemy import String, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 import uuid
-from FIOS.database.models.base import BaseModel
+from database.models.base import BaseModel
 
 class ClickUpMapping(BaseModel):
     """

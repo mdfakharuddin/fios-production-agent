@@ -4,7 +4,7 @@ from typing import Optional
 import uuid
 from datetime import datetime
 
-from FIOS.database.models.base import BaseModel
+from database.models.base import BaseModel
 
 class Message(BaseModel):
     """

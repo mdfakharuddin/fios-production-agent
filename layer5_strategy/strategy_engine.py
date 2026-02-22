@@ -1,9 +1,9 @@
 import json
-from FIOS.copilot.ai import _call_ai, SYSTEM_PROMPT
-from FIOS.database.connection import async_session_maker
-from FIOS.database.models.conversations import Conversation
-from FIOS.analytics import pricing_engine
-from FIOS.memory import retrieval
+from copilot.ai import _call_ai, SYSTEM_PROMPT
+from database.connection import async_session_maker
+from database.models.conversations import Conversation
+from analytics import pricing_engine
+from memory import retrieval
 from sqlalchemy.future import select
 
 async def get_conversation(room_id: str):

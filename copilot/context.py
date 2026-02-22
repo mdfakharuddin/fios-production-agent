@@ -76,7 +76,7 @@ class BrainContext:
         Assembles the full Brain Context Protocol object.
         This is called before EVERY AI interaction.
         """
-        from FIOS.memory.retrieval import memory
+        from memory.retrieval import memory
 
         # ── 1. Freelancer Profile ─────────────────────────────────────
         raw_profile = memory.get_freelancer_profile()
@@ -209,8 +209,8 @@ class BrainContext:
         return ctx
 
     async def for_conversation(self, room_id: str) -> Dict[str, Any]:
-        from FIOS.database.connection import async_session_maker
-        from FIOS.database.models.conversations import Conversation
+        from database.connection import async_session_maker
+        from database.models.conversations import Conversation
         from sqlalchemy import select
 
         try:

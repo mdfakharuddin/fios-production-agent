@@ -85,9 +85,9 @@ async def backfill_outcomes():
     Scan all jobs and proposals, standardize their outcomes.
     Called once on startup or manually.
     """
-    from FIOS.database.connection import async_session_maker
-    from FIOS.database.models.jobs import Job
-    from FIOS.database.models.proposals import Proposal
+    from database.connection import async_session_maker
+    from database.models.jobs import Job
+    from database.models.proposals import Proposal
     from sqlalchemy import select
 
     stats = {"jobs_updated": 0, "proposals_checked": 0}
@@ -140,10 +140,10 @@ async def compute_outcome_analytics() -> Dict[str, Any]:
     Compute all cross-thread win analytics.
     Returns aggregated stats suitable for caching in strategic_metrics.
     """
-    from FIOS.database.connection import async_session_maker
-    from FIOS.database.models.jobs import Job
-    from FIOS.database.models.proposals import Proposal
-    from FIOS.database.models.conversations import Conversation
+    from database.connection import async_session_maker
+    from database.models.jobs import Job
+    from database.models.proposals import Proposal
+    from database.models.conversations import Conversation
     from sqlalchemy import select
     from sqlalchemy.orm import selectinload
 
@@ -319,7 +319,7 @@ async def compute_win_probability(
     t0 = time.time()
 
     # ── Load cached strategy (fast) ─────────────────────────────────────
-    from FIOS.copilot.strategy import get_cached_strategy, compute_strategy, save_strategy_to_db
+    from copilot.strategy import get_cached_strategy, compute_strategy, save_strategy_to_db
 
     cached = await get_cached_strategy()
     if not cached:
@@ -380,7 +380,7 @@ async def compute_win_probability(
 
     # 4. Proposal similarity to winning proposals (vector search)
     try:
-        from FIOS.memory.retrieval import memory
+        from memory.retrieval import memory
         if proposal_text:
             similar = memory.search_similar("winning_proposals", proposal_text, n=3)
             if similar:
@@ -401,7 +401,7 @@ async def compute_win_probability(
 
     # 5. Job similarity to past winning jobs
     try:
-        from FIOS.memory.retrieval import memory
+        from memory.retrieval import memory
         query = f"{job_title}\n{job_description[:500]}"
         if query.strip():
             wins = memory.search_similar("winning_proposals", query, n=3)
@@ -477,7 +477,7 @@ async def compute_win_probability(
 
 async def refresh_outcome_analytics():
     """Recompute outcome analytics and merge into strategic_metrics."""
-    from FIOS.copilot.strategy import compute_strategy, save_strategy_to_db
+    from copilot.strategy import compute_strategy, save_strategy_to_db
     try:
         outcome_data = await compute_outcome_analytics()
         strategy = await compute_strategy()

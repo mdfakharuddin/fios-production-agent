@@ -2,7 +2,7 @@ from sqlalchemy import String, Float, Integer
 from sqlalchemy.orm import Mapped, mapped_column
 from typing import Optional
 
-from FIOS.database.models.base import BaseModel
+from database.models.base import BaseModel
 
 class Analytics(BaseModel):
     __tablename__ = "analytics_metrics"

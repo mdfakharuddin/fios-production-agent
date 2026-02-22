@@ -6,7 +6,7 @@ direct SQLite queries against the existing FIOS database to provide
 historical recall for the Brain Context Protocol.
 """
 
-from FIOS.core.config import settings
+from core.config import settings
 from typing import List, Dict, Any, Optional
 import uuid
 import hashlib

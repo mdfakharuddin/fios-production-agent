@@ -5,9 +5,9 @@ import sys
 # Add project root to path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from FIOS.orchestrator.pipelines import pipeline
-from FIOS.database.connection import async_session_maker
-from FIOS.database.models.conversations import Conversation
+from orchestrator.pipelines import pipeline
+from database.connection import async_session_maker
+from database.models.conversations import Conversation
 from sqlalchemy.future import select
 import uuid
 

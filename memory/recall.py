@@ -13,8 +13,8 @@ async def build_memory_recall(job_title: str, job_description: str, strict_voice
     Retrieve top similar past jobs, winning proposals, and portfolio matches.
     Passes them to the AI to construct a high-confidence experience snapshot.
     """
-    from FIOS.memory.retrieval import memory
-    from FIOS.copilot.ai import copilot_ai
+    from memory.retrieval import memory
+    from copilot.ai import copilot_ai
 
     t0 = time.time()
     

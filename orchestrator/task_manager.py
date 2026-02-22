@@ -2,7 +2,7 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from datetime import datetime
 import asyncio
 
-from FIOS.core.config import settings
+from core.config import settings
 
 class TaskManager:
     """Manages scheduled tasks for the FIOS architecture."""

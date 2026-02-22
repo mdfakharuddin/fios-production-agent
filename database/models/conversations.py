@@ -3,7 +3,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from typing import Optional
 import uuid
 
-from FIOS.database.models.base import BaseModel
+from database.models.base import BaseModel
 
 class Conversation(BaseModel):
     __tablename__ = "conversations"

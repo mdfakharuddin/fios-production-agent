@@ -68,9 +68,9 @@ async def analyze_cross_thread_patterns() -> Dict[str, Any]:
     Extract continuous patterns: opening types, closings, length buckets.
     Applies recency weighting so recent wins count more.
     """
-    from FIOS.database.connection import async_session_maker
-    from FIOS.database.models.jobs import Job
-    from FIOS.analytics.outcome_engine import normalize_outcome, RESOLVED_OUTCOMES
+    from database.connection import async_session_maker
+    from database.models.jobs import Job
+    from analytics.outcome_engine import normalize_outcome, RESOLVED_OUTCOMES
     from sqlalchemy import select
     from sqlalchemy.orm import selectinload
 
@@ -197,9 +197,9 @@ async def analyze_time_performance() -> Dict[str, Any]:
     """
     Compare last 30/60/90 days against older data to detect growth signals.
     """
-    from FIOS.database.connection import async_session_maker
-    from FIOS.database.models.jobs import Job
-    from FIOS.analytics.outcome_engine import normalize_outcome, RESOLVED_OUTCOMES
+    from database.connection import async_session_maker
+    from database.models.jobs import Job
+    from analytics.outcome_engine import normalize_outcome, RESOLVED_OUTCOMES
     from sqlalchemy import select
 
     t0 = time.time()

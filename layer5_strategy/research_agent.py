@@ -1,8 +1,8 @@
 import json
-from FIOS.copilot.ai import _call_ai, SYSTEM_PROMPT
-from FIOS.memory import retrieval
-from FIOS.analytics import pricing_engine
-from FIOS.layer5_strategy.strategy_engine import get_conversation
+from copilot.ai import _call_ai, SYSTEM_PROMPT
+from memory import retrieval
+from analytics import pricing_engine
+from layer5_strategy.strategy_engine import get_conversation
 
 async def handle_chat(request):
     query = request.query or ""

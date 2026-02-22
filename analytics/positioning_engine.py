@@ -31,12 +31,12 @@ async def analyze_niche_strength() -> Dict[str, Any]:
     Deep niche-level analysis: win rate, revenue, stress, negotiation,
     repeat rate, LTV per niche.
     """
-    from FIOS.database.connection import async_session_maker
-    from FIOS.database.models.jobs import Job
-    from FIOS.database.models.clients import Client
-    from FIOS.database.models.conversations import Conversation
-    from FIOS.analytics.outcome_engine import normalize_outcome, RESOLVED_OUTCOMES
-    from FIOS.analytics.behavior_engine import _detect_signals, _is_freelancer
+    from database.connection import async_session_maker
+    from database.models.jobs import Job
+    from database.models.clients import Client
+    from database.models.conversations import Conversation
+    from analytics.outcome_engine import normalize_outcome, RESOLVED_OUTCOMES
+    from analytics.behavior_engine import _detect_signals, _is_freelancer
     from sqlalchemy import select
     from sqlalchemy.orm import selectinload
 
@@ -283,9 +283,9 @@ async def analyze_portfolio_gaps() -> Dict[str, Any]:
     Detect missing portfolio categories, rising keywords, sample recommendations.
     Uses job_descriptions vector index + historical job data.
     """
-    from FIOS.database.connection import async_session_maker
-    from FIOS.database.models.jobs import Job
-    from FIOS.analytics.outcome_engine import normalize_outcome
+    from database.connection import async_session_maker
+    from database.models.jobs import Job
+    from analytics.outcome_engine import normalize_outcome
     from sqlalchemy import select
     from sqlalchemy.orm import selectinload
 
@@ -344,7 +344,7 @@ async def analyze_portfolio_gaps() -> Dict[str, Any]:
     # ── Portfolio samples we have ───────────────────────────────────────
     portfolio_categories = set()
     try:
-        from FIOS.memory.retrieval import memory
+        from memory.retrieval import memory
         stats = memory.get_stats()
         portfolio_count = stats.get("portfolio_samples", {}).get("count", 0)
         if portfolio_count > 0:
@@ -440,9 +440,9 @@ async def analyze_competition_signals() -> Dict[str, Any]:
     Lightweight competition density analysis from ingested job data.
     Detects trending, emerging, and declining niches.
     """
-    from FIOS.database.connection import async_session_maker
-    from FIOS.database.models.jobs import Job
-    from FIOS.analytics.outcome_engine import normalize_outcome
+    from database.connection import async_session_maker
+    from database.models.jobs import Job
+    from analytics.outcome_engine import normalize_outcome
     from sqlalchemy import select
 
     t0 = time.time()

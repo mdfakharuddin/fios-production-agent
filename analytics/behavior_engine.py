@@ -88,11 +88,11 @@ async def analyze_negotiation_patterns() -> Dict[str, Any]:
     Analyze all historical conversations for negotiation patterns.
     Returns: discount stats, strategy effectiveness, revenue impact.
     """
-    from FIOS.database.connection import async_session_maker
-    from FIOS.database.models.jobs import Job
-    from FIOS.database.models.conversations import Conversation
-    from FIOS.database.models.proposals import Proposal
-    from FIOS.analytics.outcome_engine import normalize_outcome, RESOLVED_OUTCOMES
+    from database.connection import async_session_maker
+    from database.models.jobs import Job
+    from database.models.conversations import Conversation
+    from database.models.proposals import Proposal
+    from analytics.outcome_engine import normalize_outcome, RESOLVED_OUTCOMES
     from sqlalchemy import select
     from sqlalchemy.orm import selectinload
 
@@ -414,7 +414,7 @@ def _is_freelancer(sender: str) -> bool:
 
 async def _get_cached_negotiation_stats() -> Optional[Dict]:
     """Quick cache check for negotiation stats."""
-    from FIOS.copilot.strategy import get_cached_strategy
+    from copilot.strategy import get_cached_strategy
     cached = await get_cached_strategy()
     return cached or {}
 
@@ -428,10 +428,10 @@ async def analyze_followup_timing() -> Dict[str, Any]:
     Cross-thread timing analysis: optimal follow-up windows,
     ghost patterns, time-to-hire metrics.
     """
-    from FIOS.database.connection import async_session_maker
-    from FIOS.database.models.conversations import Conversation
-    from FIOS.database.models.jobs import Job
-    from FIOS.analytics.outcome_engine import normalize_outcome
+    from database.connection import async_session_maker
+    from database.models.conversations import Conversation
+    from database.models.jobs import Job
+    from analytics.outcome_engine import normalize_outcome
     from sqlalchemy import select
     from sqlalchemy.orm import selectinload
 
@@ -580,8 +580,8 @@ async def suggest_followup(room_id: str) -> Dict[str, Any]:
     For a specific conversation, compute follow-up recommendation.
     Returns: timing advice, ghost probability, suggested message.
     """
-    from FIOS.database.connection import async_session_maker
-    from FIOS.database.models.conversations import Conversation
+    from database.connection import async_session_maker
+    from database.models.conversations import Conversation
     from sqlalchemy import select
 
     t0 = time.time()

@@ -1,7 +1,7 @@
 import json
-from FIOS.copilot.ai import _call_ai, SYSTEM_PROMPT
-from FIOS.memory import retrieval
-from FIOS.analytics import pricing_engine
+from copilot.ai import _call_ai, SYSTEM_PROMPT
+from memory import retrieval
+from analytics import pricing_engine
 
 async def handle_job(request):
     """Analyze a new job opportunity."""

@@ -64,10 +64,10 @@ async def compute_strategy() -> Dict[str, Any]:
     Full cross-thread strategy computation.
     Returns structured dict matching the StrategicMetrics model.
     """
-    from FIOS.database.connection import async_session_maker
-    from FIOS.database.models.jobs import Job, JobOutcome
-    from FIOS.database.models.proposals import Proposal
-    from FIOS.database.models.conversations import Conversation
+    from database.connection import async_session_maker
+    from database.models.jobs import Job, JobOutcome
+    from database.models.proposals import Proposal
+    from database.models.conversations import Conversation
     from sqlalchemy import select
     from sqlalchemy.orm import selectinload
 
@@ -362,8 +362,8 @@ def _generate_insights(
 
 async def save_strategy_to_db(metrics: Dict[str, Any]) -> bool:
     """Upsert the computed strategy into strategic_metrics table."""
-    from FIOS.database.connection import async_session_maker
-    from FIOS.database.models.strategic_metrics import StrategicMetrics
+    from database.connection import async_session_maker
+    from database.models.strategic_metrics import StrategicMetrics
     from sqlalchemy import select
 
     try:
@@ -420,8 +420,8 @@ async def save_strategy_to_db(metrics: Dict[str, Any]) -> bool:
 
 async def get_cached_strategy() -> Optional[Dict[str, Any]]:
     """Load last computed strategy from DB (fast path)."""
-    from FIOS.database.connection import async_session_maker
-    from FIOS.database.models.strategic_metrics import StrategicMetrics
+    from database.connection import async_session_maker
+    from database.models.strategic_metrics import StrategicMetrics
     from sqlalchemy import select
 
     try:

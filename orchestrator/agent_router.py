@@ -1,7 +1,7 @@
 from typing import Dict, Any
 
-from FIOS.layer5_strategy import strategy_engine, analysis_engine, execution_engine, research_agent
-from FIOS.analytics import pricing_engine
+from layer5_strategy import strategy_engine, analysis_engine, execution_engine, research_agent
+from analytics import pricing_engine
 
 async def route(request) -> Dict[str, Any]:
     """Single-Entry Intelligence Router."""

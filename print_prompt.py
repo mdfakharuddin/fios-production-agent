@@ -1,6 +1,6 @@
 import asyncio
-from FIOS.layer5_strategy.research_agent import handle_chat
-from FIOS.main import BrainRequest
+from layer5_strategy.research_agent import handle_chat
+from main import BrainRequest
 
 async def main():
     req = BrainRequest(
@@ -18,7 +18,7 @@ async def main():
         }
     )
     # Mock _call_ai
-    import FIOS.layer5_strategy.research_agent
+    import layer5_strategy.research_agent
     async def mock_call(prompt, system):
         print(prompt)
         return "MOCK"

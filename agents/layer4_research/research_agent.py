@@ -8,7 +8,7 @@ It is designed to run as a standalone service (on Coolify) or be called by n8n.
 import json
 import httpx
 from typing import Dict, Any
-from FIOS.copilot.ai import _call_ai, SYSTEM_ROLE
+from copilot.ai import _call_ai, SYSTEM_ROLE
 
 class ResearchAgent:
     async def analyze_market_alignment(self, job_data: Dict[str, Any], brain_data: Dict[str, Any]) -> Dict[str, Any]:

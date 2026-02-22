@@ -50,11 +50,11 @@ async def analyze_revenue_concentration() -> Dict[str, Any]:
     Where does your money actually come from?
     Revenue-weighted analysis across niches, clients, pricing tiers.
     """
-    from FIOS.database.connection import async_session_maker
-    from FIOS.database.models.jobs import Job
-    from FIOS.database.models.proposals import Proposal
-    from FIOS.database.models.conversations import Conversation
-    from FIOS.analytics.outcome_engine import normalize_outcome
+    from database.connection import async_session_maker
+    from database.models.jobs import Job
+    from database.models.proposals import Proposal
+    from database.models.conversations import Conversation
+    from analytics.outcome_engine import normalize_outcome
     from sqlalchemy import select
     from sqlalchemy.orm import selectinload
 
@@ -215,7 +215,7 @@ async def score_opportunity(
     risk_flags = []
 
     # ── Load cached strategy for baselines ──────────────────────────────
-    from FIOS.copilot.strategy import get_cached_strategy
+    from copilot.strategy import get_cached_strategy
     cached = await get_cached_strategy() or {}
 
     # 1. Win probability (use provided or compute)
@@ -223,7 +223,7 @@ async def score_opportunity(
         factors["win_probability"] = min(100, max(0, win_probability))
     else:
         try:
-            from FIOS.analytics.outcome_engine import compute_win_probability
+            from analytics.outcome_engine import compute_win_probability
             wp = await compute_win_probability(
                 job_title=job_title,
                 job_description=job_description,
@@ -352,10 +352,10 @@ async def detect_distractions() -> Dict[str, Any]:
     Find patterns where low-value jobs consume disproportionate effort.
     Returns alerts and recommended focus shifts.
     """
-    from FIOS.database.connection import async_session_maker
-    from FIOS.database.models.jobs import Job
-    from FIOS.database.models.conversations import Conversation
-    from FIOS.analytics.outcome_engine import normalize_outcome
+    from database.connection import async_session_maker
+    from database.models.jobs import Job
+    from database.models.conversations import Conversation
+    from analytics.outcome_engine import normalize_outcome
     from sqlalchemy import select
     from sqlalchemy.orm import selectinload
 
@@ -474,11 +474,11 @@ async def generate_daily_brief() -> Dict[str, Any]:
     Actionable daily strategic summary.
     Combines revenue analysis, active opportunities, distraction alerts.
     """
-    from FIOS.database.connection import async_session_maker
-    from FIOS.database.models.conversations import Conversation
-    from FIOS.database.models.jobs import Job
-    from FIOS.analytics.outcome_engine import normalize_outcome
-    from FIOS.analytics.behavior_engine import suggest_followup
+    from database.connection import async_session_maker
+    from database.models.conversations import Conversation
+    from database.models.jobs import Job
+    from analytics.outcome_engine import normalize_outcome
+    from analytics.behavior_engine import suggest_followup
     from sqlalchemy import select
     from sqlalchemy.orm import selectinload
 
@@ -514,7 +514,7 @@ async def generate_daily_brief() -> Dict[str, Any]:
         last_ts_str = conv.last_message_timestamp or ""
         hours_inactive = 0
         if last_ts_str:
-            from FIOS.analytics.behavior_engine import _parse_ts
+            from analytics.behavior_engine import _parse_ts
             last_ts = _parse_ts(last_ts_str)
             if last_ts:
                 hours_inactive = (datetime.now() - last_ts).total_seconds() / 3600
@@ -577,7 +577,7 @@ async def generate_daily_brief() -> Dict[str, Any]:
     # ── Pricing hint ────────────────────────────────────────────────────
     pricing_hint = "Maintain current pricing strategy"
     try:
-        from FIOS.copilot.strategy import get_cached_strategy
+        from copilot.strategy import get_cached_strategy
         cached = await get_cached_strategy() or {}
         opt_price = cached.get("optimal_price_range", {})
         if opt_price.get("avg_winning"):

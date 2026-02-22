@@ -120,10 +120,10 @@ If you sound like a standard AI assistant, you have failed. Be direct, human, an
         Heavy analytics task: Compute the voice profile from past data.
         Usually run via background task.
         """
-        from FIOS.database.connection import async_session_maker
-        from FIOS.database.models.jobs import Job
-        from FIOS.database.models.conversations import Conversation
-        from FIOS.copilot.ai import copilot_ai
+        from database.connection import async_session_maker
+        from database.models.jobs import Job
+        from database.models.conversations import Conversation
+        from copilot.ai import copilot_ai
         from sqlalchemy import select
         from sqlalchemy.orm import selectinload
         
@@ -180,7 +180,7 @@ Return ONLY a JSON object:
   "writing_constraints": "Compile a 2-3 sentence strict instruction block on how to write EXACTLY like this person. Mention what to avoid."
 }}"""
 
-        from FIOS.copilot.ai import _call_ai, _parse_json_response
+        from copilot.ai import _call_ai, _parse_json_response
         raw = await _call_ai(prompt)
         profile = _parse_json_response(raw)
         

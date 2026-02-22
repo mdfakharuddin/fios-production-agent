@@ -70,12 +70,12 @@ async def compute_client_profiles() -> List[Dict[str, Any]]:
     Compute detailed CLV profile for every client.
     Returns list of client profiles sorted by lifetime_value descending.
     """
-    from FIOS.database.connection import async_session_maker
-    from FIOS.database.models.clients import Client
-    from FIOS.database.models.jobs import Job
-    from FIOS.database.models.conversations import Conversation
-    from FIOS.analytics.outcome_engine import normalize_outcome
-    from FIOS.analytics.behavior_engine import _detect_signals, _is_freelancer, _parse_ts
+    from database.connection import async_session_maker
+    from database.models.clients import Client
+    from database.models.jobs import Job
+    from database.models.conversations import Conversation
+    from analytics.outcome_engine import normalize_outcome
+    from analytics.behavior_engine import _detect_signals, _is_freelancer, _parse_ts
     from sqlalchemy import select
     from sqlalchemy.orm import selectinload
 
@@ -296,10 +296,10 @@ async def detect_upsell_opportunities() -> Dict[str, Any]:
     Scan all active conversations for upsell signals.
     Returns actionable suggestions.
     """
-    from FIOS.database.connection import async_session_maker
-    from FIOS.database.models.conversations import Conversation
-    from FIOS.analytics.outcome_engine import normalize_outcome
-    from FIOS.analytics.behavior_engine import _is_freelancer
+    from database.connection import async_session_maker
+    from database.models.conversations import Conversation
+    from analytics.outcome_engine import normalize_outcome
+    from analytics.behavior_engine import _is_freelancer
     from sqlalchemy import select
     from sqlalchemy.orm import selectinload
 
