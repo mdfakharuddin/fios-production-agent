@@ -369,8 +369,9 @@
       const lastClientMessage = extractLatestClientMessage();
       elReplyPreview.innerText = lastClientMessage;
 
+      const convoCtx = extractConversationContext();
       const output = await executeBrainCommand(
-        `Generate 3 context-aware reply options for this conversation. Return strict plain text numbered list ONLY. Do not wrap items in quotes.\n\nLatest conversation context:\n${lastClientMessage}`
+        `Generate 3 context-aware reply options for this conversation. Return strict plain text numbered list ONLY. Do not wrap items in quotes. DO NOT output JSON. Use the following conversation context to find the latest client message:\n\n${JSON.stringify(convoCtx, null, 2)}`
       );
 
       const replies = parseReplyOptions(output);
