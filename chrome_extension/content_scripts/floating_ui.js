@@ -58,7 +58,11 @@
     const roomId = match ? match[1] : null;
     if (roomId) {
       try {
-        chrome.storage.local.set({ current_room_id: roomId });
+        if (chrome.runtime && chrome.runtime.id) {
+          chrome.storage.local.set({ current_room_id: roomId }).catch(e => {
+            console.warn("Upie: Async storage error", e);
+          });
+        }
       } catch (e) {
         console.warn("Upie: Extension context likely invalidated", e);
       }
