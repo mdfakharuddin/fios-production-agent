@@ -27,12 +27,14 @@ async def handle_chat(request):
     if active_room_context == "No active room detected." and request.data:
         print("[BrainFreeChat] WARNING: Database empty for room. Proceeding with Live Scraped frontend context.")
         payload = request.data
-        if isinstance(payload, dict) and "messages" in payload:
+        if isinstance(payload, dict) and "conversation" in payload:
+            conv_data = payload.get("conversation")
+            live_msgs = conv_data if isinstance(conv_data, list) else conv_data.get("messages", []) if isinstance(conv_data, dict) else []
             active_room_context = {
                 "room_title": payload.get("thread_name", "Unknown UI Thread"),
                 "upwork_summary": "Not yet synced to Database",
-                "total_messages_on_screen": len(payload.get("messages", [])),
-                "latest_messages": payload.get("messages", [])[-50:] 
+                "total_messages_on_screen": len(live_msgs),
+                "latest_messages": live_msgs[-50:] 
             }
             print(f"[BrainFreeChat] Extracted {len(active_room_context['latest_messages'])} live messages from DOM.")
         else:

@@ -311,10 +311,24 @@
   function extractLatestClientMessage() {
     const convo = extractConversationContext();
     const messages = Array.isArray(convo?.messages) ? convo.messages : [];
+    
+    // Try to find the client name from the header
+    const roomTitleEl = document.querySelector('.room-title, #room-header-title');
+    const roomTitle = roomTitleEl ? roomTitleEl.innerText.toLowerCase() : '';
+
     const latest = messages
       .filter((m) => {
         const s = (m.sender || '').toLowerCase();
-        return s !== 'me' && !s.includes('fakharuddin') && !s.includes('fakhar uddin') && s !== 'participant';
+        
+        // Positive match against room title
+        if (roomTitle && s.length > 2 && roomTitle.includes(s)) return true;
+        
+        // Negative matches against known freelancer variations
+        return s !== 'me' && 
+               !s.includes('fakhar') && 
+               !s.includes('fakar') && 
+               !s.includes('uddin') && 
+               s !== 'participant';
       })
       .pop();
     

@@ -32,7 +32,7 @@
   function detectSender(node) {
     const parent = node.closest('[data-test="message-item"], article, .up-d-story');
     if (!parent) return "Participant";
-    const senderEl = parent.querySelector('.sender-name, strong, b, [data-test="sender-name"]');
+    const senderEl = parent.querySelector('.user-name, .sender-name, .name, [data-test="sender-name"], .up-avatar-text, strong, b, span[aria-label]');
     return (senderEl?.innerText || "Participant").trim();
   }
 
@@ -81,7 +81,7 @@
     const raw = Array.from(document.querySelectorAll('[data-test="message-item"], article, [role="listitem"]'));
     const messages = raw
       .map((el) => ({
-        sender: (el.querySelector('.sender-name, strong, b')?.innerText || "Participant").trim(),
+        sender: (el.querySelector('.user-name, .sender-name, .name, [data-test="sender-name"], .up-avatar-text, strong, b, span[aria-label]')?.innerText || "Participant").trim(),
         text: (el.innerText || "").trim(),
         role: "participant"
       }))

@@ -385,7 +385,7 @@ messageNodes.forEach(msg => {
     }
     
     // 1. Hunt for Sender
-    let sender = msg.querySelector('.sender-name, .name, [data-test="sender-name"], .up-avatar-text, strong, b, span[aria-label]')?.innerText;
+    let sender = msg.querySelector('.user-name, .sender-name, .name, [data-test="sender-name"], .up-avatar-text, strong, b, span[aria-label]')?.innerText;
     
     // 2. Hunt for Time
     let time = msg.querySelector('.message-time, time, .up-chat-message-time, [data-test="message-time"], .time, span.text-muted')?.innerText;
