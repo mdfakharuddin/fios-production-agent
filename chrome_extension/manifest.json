@@ -18,7 +18,7 @@
   ],
   "host_permissions": [
     "https://*.upwork.com/*",
-    "https://api.themenuagency.com/fios/*"
+    "http://127.0.0.1:8000/*"
   ],
   "background": {
     "service_worker": "background.js"

@@ -124,11 +124,11 @@ async def brain_execute(request: BrainRequest):
     result = await agent_router.route(request)
     return result
 
-# ── Brain API (for external agents: n8n, OpenClaw, etc.) ──────────────────
+# ── Brain API (for external agents: OpenClaw, etc.) ──────────────────
 
 @app.get("/api/v1/brain/snapshot")
 async def brain_snapshot():
-    """Returns the full brain state. Used by n8n/OpenClaw agents."""
+    """Returns the full brain state."""
     from brain_store import load_brain
     return {"status": "ok", "brain": load_brain()}
 
@@ -160,7 +160,7 @@ async def brain_add_note(body: dict):
 
 @app.post("/api/v1/research/job")
 async def perform_job_research(body: dict):
-    """Deep research into a job. Called by n8n or other agents."""
+    """Deep research into a job."""
     from agents.layer4_research.research_agent import research_agent
     from brain_store import load_brain
     
@@ -216,17 +216,6 @@ async def ingest_upwork_data(payload: dict):
     
     print(f"Received {len(raw_data) if isinstance(raw_data, list) else 1} records of type: {data_type} from Chrome Extension.")
     
-    # Forward to n8n if configured
-    if settings.N8N_WEBHOOK_URL:
-        import asyncio, httpx
-        async def _forward():
-            try:
-                async with httpx.AsyncClient() as client:
-                    await client.post(settings.N8N_WEBHOOK_URL, json=payload, timeout=5.0)
-            except Exception as e:
-                print(f"[Webhook] Failed to forward to n8n: {e}")
-        asyncio.create_task(_forward())
-
     try:
         # Pass the entire payload dict to the pipeline which handles Pydantic validation
         record_ids = await pipeline.process_raw_input(data_type, payload)

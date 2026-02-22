@@ -1,6 +1,6 @@
 // upie_api_config.js
 
-export const API_BASE = "https://api.themenuagency.com/fios";
+export const API_BASE = "http://127.0.0.1:8000";
 
 export const ENDPOINTS = {
   EXECUTE: `${API_BASE}/brain/execute`,

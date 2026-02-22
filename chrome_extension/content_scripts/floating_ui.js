@@ -5,7 +5,7 @@
   if (window.upieControllerLoaded) return;
   window.upieControllerLoaded = true;
 
-  const API_BASE = "https://api.themenuagency.com/fios";
+  const API_BASE = "http://127.0.0.1:8000";
   const ENDPOINTS = {
     EXECUTE: `${API_BASE}/brain/execute`,
     INGEST: `${API_BASE}/api/v1/ingest`,

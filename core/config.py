@@ -41,7 +41,6 @@ class Settings(BaseSettings):
     OPENAI_API_KEY: Optional[str] = None
 
     # External Agent Webhooks
-    N8N_WEBHOOK_URL: Optional[str] = None
     OPENCLAW_WEBHOOK_URL: Optional[str] = None
     
     model_config = SettingsConfigDict(env_file=os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".env"), case_sensitive=True, extra="ignore")
